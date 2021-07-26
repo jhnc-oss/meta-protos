@@ -6,5 +6,5 @@ This layer depends on:
 
 | meta layer          | project repository                    |
 | ------------------- | ------------------------------------- |
-| poky                | https://git.yoctoproject.org/git/poky |
+| poky                | [poky/dunfell](https://git.yoctoproject.org/cgit/cgit.cgi/poky/log/?h=dunfell) |
 
