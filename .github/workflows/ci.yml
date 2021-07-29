@@ -1,0 +1,22 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: "Build"
+    steps:
+      - uses: actions/checkout@master
+      - name: Setup
+        run: |
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          pip install -r requirements.txt
+      - name: oelint-adv
+        run: |
+          find . -type d \( -iname packagegroups \) -prune -false -o \
+            \( -name "*.bb" -o -name "*.bbappend" \) \
+            -exec oelint-adv --quiet --rulefile oelint.rules {} + || true
+
