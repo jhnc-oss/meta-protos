@@ -20,3 +20,5 @@ FILES_${PN} += "${mandir}"
 
 RDEPENDS_${PN} += "openssh"
 
+BBCLASSEXTEND = "native nativesdk"
+
