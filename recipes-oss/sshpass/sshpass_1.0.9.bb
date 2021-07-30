@@ -7,8 +7,8 @@ SRC_URI[sha256sum] = "71746e5e057ffe9b00b44ac40453bf47091930cba96bbea8dc48717ded
 inherit autotools
 
 do_install_append() {
-  install -d ${D}${docdir}/${PN}
-  install -m 0644 ${S}/COPYING ${D}/${docdir}/${PN}/LICENSE
+    install -d ${D}${docdir}/${PN}
+    install -m 0644 ${S}/COPYING ${D}/${docdir}/${PN}/LICENSE
 }
 
 # avoid empty -dev (no headers in source) and ship manpages and license file
@@ -19,4 +19,6 @@ FILES_${PN} += "${docdir}"
 FILES_${PN} += "${mandir}"
 
 RDEPENDS_${PN} += "openssh"
+
+BBCLASSEXTEND = "native nativesdk"
 

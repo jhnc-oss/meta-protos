@@ -6,7 +6,10 @@ SRC_URI[sha256sum] = "51eba78277d51f0299617bedffc388b2b4ea478f5cc9876cc2544dae79
 
 inherit cmake
 
-EXTRA_OECMAKE = "-DBUILD_TESTING=OFF -DWITH_EXAMPLES=OFF"
+EXTRA_OECMAKE = "\
+    -DBUILD_TESTING=OFF \
+    -DWITH_EXAMPLES=OFF \
+"
 
 # Build as single package
 PACKAGES = "${PN}-dbg ${PN}"
@@ -16,3 +19,4 @@ FILES_${PN} += "${prefix}/include"
 FILES_${PN} += "${prefix}/lib"
 
 BBCLASSEXTEND = "native nativesdk"
+

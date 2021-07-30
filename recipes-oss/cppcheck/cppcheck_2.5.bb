@@ -11,8 +11,10 @@ EXTRA_OECMAKE = "\
     -DBUILD_GUI=OFF \
     -DUSE_MATCHCOMPILER=ON \
     -DHAVE_RULES=ON \
-    -DBUILD_TESTS=OFF"
+    -DBUILD_TESTS=OFF \
+"
 
 FILES_${PN} += "${datadir}/Cppcheck/"
 
 BBCLASSEXTEND = "native nativesdk"
+

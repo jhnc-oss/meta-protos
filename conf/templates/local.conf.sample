@@ -12,6 +12,8 @@ PACKAGE_CLASSES ?= "package_rpm"
 DL_DIR ?= "${TOPDIR}/../download"
 SSTATE_DIR ?= "${TOPDIR}/../sstate"
 
+INHERIT += "extra_mirrors"
+
 PACKAGECONFIG_append_pn-qemu-system-native = " sdl"
 
 CONF_VERSION = "1"
