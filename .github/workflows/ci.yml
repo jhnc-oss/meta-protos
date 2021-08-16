@@ -18,5 +18,5 @@ jobs:
         run: |
           find . -type d \( -iname packagegroups \) -prune -false -o \
             \( -name "*.bb" -o -name "*.bbappend" \) \
-            -exec oelint-adv --quiet --rulefile oelint.rules {} + || true
+            -exec oelint-adv --quiet --exit-zero --rulefile oelint.rules {} +
 
