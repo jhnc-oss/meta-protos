@@ -5,3 +5,5 @@ HOMEPAGE = "https://github.com/cpputest/cpputest"
 BUGTRACKER = "https://github.com/cpputest/cpputest/issues"
 SECTION = "development"
 LICENSE = "BSD-3-Clause"
+
+CVE_PRODUCT = ""

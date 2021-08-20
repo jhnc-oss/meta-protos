@@ -5,3 +5,5 @@ HOMEPAGE = "https://cmocka.org/"
 BUGTRACKER = "https://gitlab.com/cmocka/cmocka/-/issues"
 SECTION = "development"
 LICENSE = "Apache-2"
+
+CVE_PRODUCT = ""
