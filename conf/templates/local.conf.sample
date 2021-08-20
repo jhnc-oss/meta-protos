@@ -2,6 +2,8 @@ MACHINE ?= "genericx86"
 DISTRO ?= "protos"
 SDKMACHINE = "x86_64"
 
+DEFAULTTUNE ?= "i586"
+
 PATCHRESOLVE = "noop"
 
 EXTRA_IMAGE_FEATURES ?= "debug-tweaks"
