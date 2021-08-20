@@ -5,3 +5,5 @@ HOMEPAGE = "http://cppcheck.sourceforge.net/"
 BUGTRACKER = "https://trac.cppcheck.net/"
 SECTION = "development"
 LICENSE = "GPL-3.0-or-later"
+
+CVE_PRODUCT = ""

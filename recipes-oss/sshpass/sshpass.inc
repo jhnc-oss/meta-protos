@@ -6,3 +6,4 @@ BUGTRACKER = "https://sourceforge.net/p/sshpass/bugs/"
 SECTION = "console/network"
 LICENSE = "GPLv2"
 
+CVE_PRODUCT = ""
