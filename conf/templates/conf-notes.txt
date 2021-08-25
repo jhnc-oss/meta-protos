@@ -11,8 +11,15 @@ Welcome to the PROTOS Yocto buildsystem
 
 You can now run 'bitbake <target>'
 
+Example targets are:
+    audit
+    cmocka
+
+Example package group targets are:
+    packagegroup-protos-oss
+
 In order to debug targets use:
-    <package name> -c devshell
+    <target> -c devshell
 
 Other commonly useful commands are:
  - 'devtool' and 'recipetool' handle common recipe tasks
