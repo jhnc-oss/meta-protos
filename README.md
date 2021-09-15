@@ -13,3 +13,4 @@ This layer depends on:
 | poky                | [poky/dunfell](https://git.yoctoproject.org/cgit/cgit.cgi/poky/log/?h=dunfell)   |
 | meta-clang          | [meta-clang/dunfell](https://github.com/jhnc-oss/meta-clang/tree/dunfell)        |
 | meta-qt5            | [meta-qt5/dunfell](https://github.com/jhnc-oss/meta-qt5/tree/h5b/dunfell-5.12.4) |
+
