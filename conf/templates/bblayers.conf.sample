@@ -7,9 +7,11 @@ BBFILES ?= ""
 
 BBLAYERS ?= " \
    ${TOPDIR}/../meta-clang \
+   ${TOPDIR}/../meta-mingw \
    ${TOPDIR}/../meta-protos \
    ${TOPDIR}/../meta-protos/meta \
    ${TOPDIR}/../meta-qt5 \
+   ${TOPDIR}/../meta-selinux \
    ${TOPDIR}/../poky/meta \
    ${TOPDIR}/../poky/meta-poky \
    ${TOPDIR}/../poky/meta-yocto-bsp \
