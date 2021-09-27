@@ -4,6 +4,9 @@ SDKMACHINE = "x86_64"
 
 DEFAULTTUNE ?= "i586"
 
+baselib = "${@d.getVar('BASE_LIB_tune-' + (d.getVar('DEFAULTTUNE') \
+    or 'INVALID')) or d.getVar('BASELIB')}"
+
 PATCHRESOLVE = "noop"
 
 EXTRA_IMAGE_FEATURES ?= "debug-tweaks"
