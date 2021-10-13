@@ -3,7 +3,7 @@ require ${PN}.inc
 LIC_FILES_CHKSUM = "file://COPYING-CMAKE-SCRIPTS;md5=54c7042be62e169199200bc6477f04d1"
 
 SRC_URI = "https://invent.kde.org/frameworks/${BPN}/-/archive/v${PV}/${BPN}-v${PV}.tar.gz"
-SRC_URI[sha256sum] = "1b9fc4d9281e50561ffad71178298e91a41f576d61052fa9330ad414a2f398e3"
+SRC_URI[sha256sum] = "105bd08ee9bd610c4a2af079fbe6f8cbcd340176f8f80294130f4a3dbbe3388d"
 
 S = "${WORKDIR}/${BPN}-v${PV}"
 
