@@ -16,8 +16,8 @@ EXTRA_OECMAKE = "\
 PACKAGES = "${PN}-dbg ${PN}"
 INSANE_SKIP_${PN} += "staticdev"
 
-FILES_${PN} += "${prefix}/include"
-FILES_${PN} += "${prefix}/lib"
+FILES_${PN} += "${includedir}"
+FILES_${PN} += "${libdir}"
 
 BBCLASSEXTEND = "native nativesdk"
 
