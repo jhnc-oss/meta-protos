@@ -2,8 +2,11 @@ require ${PN}.inc
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 DEPENDS += "libpcre"
-SRC_URI = "${GITHUB_MIRROR}/danmar/cppcheck/archive/refs/tags/${PV}.tar.gz"
-SRC_URI[sha256sum] = "99f0c5cf58a0072876c4deb114f3f5f798c933b8e459cddb00a061c8bb4dd765"
+
+SRC_URI = "git://github.com/danmar/cppcheck.git;protocol=https;nobranch=1"
+SRCREV = "d873b8e77189cf6b974fc9d403df8e8500eded7b"
+
+S = "${WORKDIR}/git"
 
 inherit cmake
 
