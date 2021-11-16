@@ -1,1 +1,4 @@
-oelint-adv
+# oelint-adv
+
+# Use git version until > 2.6.0 is available
+git+https://github.com/priv-kweihmann/oelint-adv@36ae097
