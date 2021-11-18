@@ -7,7 +7,7 @@ RDEPENDS_${PN} = "\
     cmocka \
     cppcheck \
     cpputest \
-    minizip-ng \
+    minizip \
     sshpass \
 "
 
