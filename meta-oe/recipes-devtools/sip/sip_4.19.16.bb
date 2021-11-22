@@ -4,14 +4,12 @@ SECTION = "devel"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://LICENSE-GPL2;md5=e91355d8a6f8bd8f7c699d62863c7303"
 
+DEPENDS += "python"
+
 SRC_URI = "https://src.fedoraproject.org/lookaside/pkgs/sip/sip-${PV}.tar.gz"
 SRC_URI[sha256sum] = "184c790d58e9527fc6bdac2bbf8638f3d1b41dea922cad8eb83172b4ba70c620"
 
 S = "${WORKDIR}/sip-${PV}"
-
-BBCLASSEXTEND = "native"
-
-DEPENDS = "python"
 
 inherit python-dir pythonnative
 
@@ -41,6 +39,8 @@ do_install() {
     oe_runmake install
 }
 
-FILES_python-sip = "${libdir}/${PYTHON_DIR}/site-packages/"
+FILES_${PN} += "${libdir}/${PYTHON_DIR}/site-packages/"
 FILES_${PN}-dbg += "${libdir}/${PYTHON_DIR}/site-packages/.debug"
+
+BBCLASSEXTEND = "native"
 
