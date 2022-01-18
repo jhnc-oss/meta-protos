@@ -6,8 +6,10 @@ BUGTRACKER = "https://github.com/fmtlib/fmt/issues"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://LICENSE.rst;md5=af88d758f75f3c5c48a967501f24384b"
 
-SRC_URI = "git://github.com/jhnc-oss/fmt;branch=8.0.1-jh"
-SRCREV = "a9a4a93113bb98781432f25b2a97959e2753ea20"
+BRANCH = "8.1.0-jh"
+
+SRC_URI = "git://github.com/jhnc-oss/fmt;branch=${BRANCH}"
+SRCREV = "1dcbdf896a8e1672cd9f189ffe3e2e0290ad0aa0"
 
 S = "${WORKDIR}/git"
 
