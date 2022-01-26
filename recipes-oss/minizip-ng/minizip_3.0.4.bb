@@ -12,7 +12,7 @@ DEPENDS += "\
 "
 
 SRC_URI = "git://github.com/zlib-ng/minizip-ng.git;branch=master;protocol=https"
-SRCREV = "99d39015e29703af2612277180ea586805f655ea"
+SRCREV = "95987e98b4862c055b8cf91d6e7ce5f9153ddc24"
 
 S = "${WORKDIR}/git"
 
