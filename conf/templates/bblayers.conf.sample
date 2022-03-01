@@ -8,6 +8,7 @@ BBFILES ?= ""
 BBLAYERS ?= " \
    ${TOPDIR}/../meta-clang \
    ${TOPDIR}/../meta-mingw \
+   ${TOPDIR}/../meta-oe/meta-filesystems \
    ${TOPDIR}/../meta-oe/meta-oe \
    ${TOPDIR}/../meta-oe/meta-python \
    ${TOPDIR}/../meta-protos \
