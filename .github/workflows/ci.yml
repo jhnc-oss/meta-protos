@@ -7,15 +7,15 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/jhnc-oss/images/python:3.10
     name: "Build"
     steps:
       - uses: actions/checkout@main
+      - uses: actions/setup-python@main
+        with:
+          python-version: '3.10'
+          cache: 'pip'
       - name: Setup
-        run: |
-          pip install -r requirements.txt
-          dnf install -y findutils
+        run: pip install -r requirements.txt
       - name: oelint-adv
         run: |
           find . -type d \( -iname packagegroups \) -prune -false -o \
