@@ -1,0 +1,44 @@
+From 08d753982882437b47e83e745790f95469d45f94 Mon Sep 17 00:00:00 2001
+From: Sebastian Trahm <basti@schleifi.com>
+Date: Fri, 1 Apr 2022 11:44:53 +0000
+Subject: [PATCH] hack to allow library packaging
+
+Upstream-Status: Pending
+Signed-off-by: Sebastian Trahm <basti@schleifi.com>
+---
+ server/libFunq/libFunq.pro | 28 ++++++++++++++--------------
+ 1 file changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/server/libFunq/libFunq.pro b/server/libFunq/libFunq.pro
+index 5365438..ed49a7a 100644
+--- a/server/libFunq/libFunq.pro
++++ b/server/libFunq/libFunq.pro
+@@ -1,14 +1,14 @@
+-TEMPLATE = lib
+-TARGET = Funq
+-
+-DESTDIR     = ../bin
+-
+-isEmpty(PREFIX) { PREFIX = /usr/local }
+-target.path = $$PREFIX/bin/
+-INSTALLS += target
+-
+-# Disable deprecation warnings since we want to be backward compatible to Qt4
+-# and thus have to use some methods which are deprecated in recent Qt versions.
+-DEFINES += QT_NO_DEPRECATED_WARNINGS=1
+-
+-include(libFunq.pri)
++TEMPLATE = lib
++TARGET = Funq
++
++DESTDIR     = ../lib
++
++isEmpty(PREFIX) { PREFIX = /usr }
++target.path = $$PREFIX/lib/
++INSTALLS += target
++
++# Disable deprecation warnings since we want to be backward compatible to Qt4
++# and thus have to use some methods which are deprecated in recent Qt versions.
++DEFINES += QT_NO_DEPRECATED_WARNINGS=1
++
++include(libFunq.pri)
