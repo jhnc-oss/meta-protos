@@ -18,6 +18,9 @@ def build_settings(d):
     opt_machine = "genericx86"
     opt_defaulttune = "i586"
 
+  d.appendVar("IMAGE_FSTYPES", " tar.gz")
+  d.setVar("IMAGE_VERSION_SUFFIX", "-" + d.getVar('DISTRO_VERSION'))
+
   d.setVar("MACHINE", opt_machine)
   d.setVar("DEFAULTTUNE", opt_defaulttune)
 
