@@ -9,5 +9,5 @@ RDEPENDS_${PN} = "\
     cpputest \
     minizip \
     sshpass \
+    xclip \
 "
-
