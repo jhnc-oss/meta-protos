@@ -1,0 +1,22 @@
+From d76e312b898de31891b0ae71e0234dd19906c2fc Mon Sep 17 00:00:00 2001
+From: yocto <yocto@localhost>
+Date: Thu, 12 May 2022 13:16:24 +0000
+Subject: [PATCH] fix permission denied on file descriptor of bitbake
+
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 9295258..84df1a8 100644
+--- a/Makefile
++++ b/Makefile
+@@ -7,7 +7,7 @@
+ #
+ # Path for the floppy disk device
+ #
+-FDISK=/dev/fd0
++FDISK=/dev/fd/0
+ 
+ AS=as -32
+ CC=gcc
