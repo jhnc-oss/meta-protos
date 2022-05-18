@@ -1,0 +1,46 @@
+Use python3 for installed executable python scripts.
+
+Fedora is a Python3-only distribution:
+https://fedoraproject.org/wiki/FinalizingFedoraSwitchtoPython3
+
+This fixes build failures where builders may strictly enforce only
+python3 during a transitional phase.
+
+Author: Carlos O'Donell <carlos@redhat.com>
+
+Index: glibc-2.27/benchtests/scripts/compare_bench.py
+===================================================================
+--- glibc-2.27.orig/benchtests/scripts/compare_bench.py	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/benchtests/scripts/compare_bench.py	2018-12-18 10:18:41.353787349 +0000
+@@ -1,6 +1,6 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # Copyright (C) 2015-2018 Free Software Foundation, Inc.
+ # This file is part of the GNU C Library.
+ #
+ # The GNU C Library is free software; you can redistribute it and/or
+ # modify it under the terms of the GNU Lesser General Public
+Index: glibc-2.27/benchtests/scripts/import_bench.py
+===================================================================
+--- glibc-2.27.orig/benchtests/scripts/import_bench.py	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/benchtests/scripts/import_bench.py	2018-12-18 10:18:41.359787274 +0000
+@@ -1,6 +1,6 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # Copyright (C) 2015-2018 Free Software Foundation, Inc.
+ # This file is part of the GNU C Library.
+ #
+ # The GNU C Library is free software; you can redistribute it and/or
+ # modify it under the terms of the GNU Lesser General Public
+Index: glibc-2.27/benchtests/scripts/validate_benchout.py
+===================================================================
+--- glibc-2.27.orig/benchtests/scripts/validate_benchout.py	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/benchtests/scripts/validate_benchout.py	2018-12-18 10:18:41.360787261 +0000
+@@ -1,6 +1,6 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # Copyright (C) 2014-2018 Free Software Foundation, Inc.
+ # This file is part of the GNU C Library.
+ #
+ # The GNU C Library is free software; you can redistribute it and/or
+ # modify it under the terms of the GNU Lesser General Public

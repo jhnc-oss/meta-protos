@@ -1,0 +1,35 @@
+Index: glibc-2.27/nscd/nscd.service
+===================================================================
+--- glibc-2.27.orig/nscd/nscd.service	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nscd/nscd.service	2018-12-18 10:17:16.187852070 +0000
+@@ -1,9 +1,10 @@
+ # systemd service file for nscd
+ 
+ [Unit]
+ Description=Name Service Cache Daemon
++After=syslog.target
+ 
+ [Service]
+ Type=forking
+ ExecStart=/usr/sbin/nscd
+ ExecStop=/usr/sbin/nscd --shutdown
+@@ -15,5 +16,6 @@ ExecReload=/usr/sbin/nscd -i netgroup
+ Restart=always
+ PIDFile=/run/nscd/nscd.pid
+ 
+ [Install]
+ WantedBy=multi-user.target
++Also=nscd.socket
+Index: glibc-2.27/nscd/nscd.socket
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ glibc-2.27/nscd/nscd.socket	2018-12-18 10:17:16.193851995 +0000
+@@ -0,0 +1,8 @@
++[Unit]
++Description=Name Service Cache Daemon Socket
++
++[Socket]
++ListenDatagram=/var/run/nscd/socket
++
++[Install]
++WantedBy=sockets.target

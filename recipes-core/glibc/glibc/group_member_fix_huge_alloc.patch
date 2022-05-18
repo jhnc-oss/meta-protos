@@ -1,0 +1,18 @@
+Index: glibc-2.27/posix/group_member.c
+===================================================================
+--- glibc-2.27.orig/posix/group_member.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/posix/group_member.c	2018-06-07 05:59:05.628218339 +0000
+@@ -29,11 +29,12 @@ int
+ __group_member (gid_t gid)
+ {
+   int n, size;
+   gid_t *groups;
+ 
+-  size = NGROUPS_MAX;
++  // start with a reasonable size
++  size = (NGROUPS_MAX>64) ? 64 : NGROUPS_MAX;
+   do
+     {
+       groups = __alloca (size * sizeof *groups);
+       n = __getgroups (size, groups);
+       size *= 2;

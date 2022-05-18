@@ -1,0 +1,98 @@
+#
+# Upstream discussions:
+# https://sourceware.org/ml/libc-alpha/2014-02/msg00580.html
+#
+# Based on the following commit:
+#
+# From 16552c01a66633c9e412984d9d92616bd4e5303c Mon Sep 17 00:00:00 2001
+# From: Andreas Schwab <schwab@redhat.com>
+# Date: Fri, 11 Jun 2010 11:04:11 +0200
+# Subject: [PATCH] Properly set __libc_multiple_libcs
+# 
+# * elf/rtld.c (_dl_starting_up): Always define.
+# (dl_main): Always set _dl_starting_up.
+# * elf/dl-support.c (_dl_starting_up): Always define.
+# * elf/dl-init.c (_dl_init): Always clear _dl_starting_up.
+# 
+# ---
+#  ChangeLog        |    7 +++++++
+#  elf/dl-init.c    |    4 ----
+#  elf/dl-support.c |    2 --
+#  elf/rtld.c       |    4 ----
+#  4 files changed, 7 insertions(+), 10 deletions(-)
+# 
+Index: glibc-2.27/elf/dl-init.c
+===================================================================
+--- glibc-2.27.orig/elf/dl-init.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/elf/dl-init.c	2018-12-18 10:16:22.656521303 +0000
+@@ -116,10 +116,8 @@ _dl_init (struct link_map *main_map, int
+ 
+   i = main_map->l_searchlist.r_nlist;
+   while (i-- > 0)
+     call_init (main_map->l_initfini[i], argc, argv, env);
+ 
+-#ifndef HAVE_INLINED_SYSCALLS
+   /* Finished starting up.  */
+   _dl_starting_up = 0;
+-#endif
+ }
+Index: glibc-2.27/elf/dl-support.c
+===================================================================
+--- glibc-2.27.orig/elf/dl-support.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/elf/dl-support.c	2018-12-18 10:16:22.660521253 +0000
+@@ -115,14 +115,12 @@ struct r_scope_elem _dl_initial_searchli
+   {
+     .r_list = &(struct link_map *) { &_dl_main_map },
+     .r_nlist = 1,
+   };
+ 
+-#ifndef HAVE_INLINED_SYSCALLS
+ /* Nonzero during startup.  */
+ int _dl_starting_up = 1;
+-#endif
+ 
+ /* Random data provided by the kernel.  */
+ void *_dl_random;
+ 
+ /* Get architecture specific initializer.  */
+Index: glibc-2.27/elf/rtld.c
+===================================================================
+--- glibc-2.27.orig/elf/rtld.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/elf/rtld.c	2018-12-18 10:16:22.662521228 +0000
+@@ -212,21 +212,19 @@ audit_list_iter_next (struct audit_list_
+     return NULL;
+   iter->previous = iter->previous->next;
+   return iter->previous->name;
+ }
+ 
+-#ifndef HAVE_INLINED_SYSCALLS
+ /* Set nonzero during loading and initialization of executable and
+    libraries, cleared before the executable's entry point runs.  This
+    must not be initialized to nonzero, because the unused dynamic
+    linker loaded in for libc.so's "ld.so.1" dep will provide the
+    definition seen by libc.so's initializer; that value must be zero,
+    and will be since that dynamic linker's _dl_start and dl_main will
+    never be called.  */
+ int _dl_starting_up = 0;
+ rtld_hidden_def (_dl_starting_up)
+-#endif
+ 
+ /* This is the structure which defines all variables global to ld.so
+    (except those which cannot be added for some reason).  */
+ struct rtld_global _rtld_global =
+   {
+@@ -897,14 +895,12 @@ dl_main (const ElfW(Phdr) *phdr,
+   GL(dl_make_stack_executable_hook) = &_dl_make_stack_executable;
+ 
+   /* Process the environment variable which control the behaviour.  */
+   process_envvars (&mode);
+ 
+-#ifndef HAVE_INLINED_SYSCALLS
+   /* Set up a flag which tells we are just starting.  */
+   _dl_starting_up = 1;
+-#endif
+ 
+   if (*user_entry == (ElfW(Addr)) ENTRY_POINT)
+     {
+       /* Ho ho.  We are not the program interpreter!  We are the program
+ 	 itself!  This means someone ran ld.so as a command.  Well, that

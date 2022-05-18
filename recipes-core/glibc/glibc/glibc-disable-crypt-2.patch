@@ -1,0 +1,283 @@
+commit 6ab902e4decd89c1a9206497d14ddba7680bfc37
+Author: Zack Weinberg <zackw@panix.com>
+Date:   Fri Jun 29 16:53:29 2018 +0200
+
+    manual: Reorganize crypt.texi.
+    
+    In preparation for a major revision of the documentation for
+    crypt(_r), getentropy, and getrandom, reorganize crypt.texi.  This
+    patch does not change any text; it only deletes and moves text.
+    
+    The description of 'getpass' moves to terminal.texi, since all it does
+    is read a password from the controlling terminal with echo disabled.
+    The "Legal Problems" section of crypt.texi is dropped, and the
+    introductory text is shifted down to the "Encrypting Passwords"
+    section; the next patch will add some new introductory text.
+    
+    Also, it is no longer true that crypt.texi's top @node needs to have
+    no pointers.  That was a vestige of crypt/ being an add-on.  (makeinfo
+    itself doesn't need @node pointers anymore, but the scripts that
+    assemble the libc manual's topmost node rely on each chapter-level
+    node having them.)
+
+Index: glibc-2.27/manual/crypt.texi
+===================================================================
+--- glibc-2.27.orig/manual/crypt.texi	2018-12-18 10:18:23.460011052 +0000
++++ glibc-2.27/manual/crypt.texi	2018-12-18 10:19:32.532147531 +0000
+@@ -1,10 +1,16 @@
+-@c This node must have no pointers.
+-@node Cryptographic Functions
+-@c @node Cryptographic Functions, Debugging Support, System Configuration, Top
+-@chapter DES Encryption and Password Handling
+-@c %MENU% DES encryption and password handling
++@node Cryptographic Functions, Debugging Support, System Configuration, Top
++@chapter Cryptographic Functions
++@c %MENU% Password storage and strongly unpredictable bytes
++
++@menu
++* crypt::                       A one-way function for passwords.
++* Unpredictable Bytes::         Randomness for cryptography purposes.
++@end menu
++
++@node crypt
++@section Encrypting Passwords
+ 
+ On many systems, it is unnecessary to have any kind of user
+ authentication; for instance, a workstation which is not connected to a
+ network probably does not need any user authentication, because to use
+ the machine an intruder must have physical access.
+@@ -28,107 +34,10 @@ the behavior of the @code{crypt} functio
+ It supports two one-way algorithms: one based on the MD5
+ message-digest algorithm that is compatible with modern BSD systems,
+ and the other based on the Data Encryption Standard (DES) that is
+ compatible with Unix systems.
+ 
+-@menu
+-* Legal Problems::              This software can get you locked up, or worse.
+-* getpass::                     Prompting the user for a password.
+-* crypt::                       A one-way function for passwords.
+-* Unpredictable Bytes::         Randomness for cryptography purposes.
+-@end menu
+-
+-@node Legal Problems
+-@section Legal Problems
+-
+-Because of the continuously changing state of the law, it's not possible
+-to provide a definitive survey of the laws affecting cryptography.
+-Instead, this section warns you of some of the known trouble spots; this
+-may help you when you try to find out what the laws of your country are.
+-
+-Some countries require that you have a license to use, possess, or import
+-cryptography.  These countries are believed to include Byelorussia,
+-Burma, India, Indonesia, Israel, Kazakhstan, Pakistan, Russia, and Saudi
+-Arabia.
+-
+-Some countries restrict the transmission of encrypted messages by radio;
+-some telecommunications carriers restrict the transmission of encrypted
+-messages over their network.
+-
+-Many countries have some form of export control for encryption software.
+-The Wassenaar Arrangement is a multilateral agreement between 33
+-countries (Argentina, Australia, Austria, Belgium, Bulgaria, Canada, the
+-Czech Republic, Denmark, Finland, France, Germany, Greece, Hungary,
+-Ireland, Italy, Japan, Luxembourg, the Netherlands, New Zealand, Norway,
+-Poland, Portugal, the Republic of Korea, Romania, the Russian
+-Federation, the Slovak Republic, Spain, Sweden, Switzerland, Turkey,
+-Ukraine, the United Kingdom and the United States) which restricts some
+-kinds of encryption exports.  Different countries apply the arrangement
+-in different ways; some do not allow the exception for certain kinds of
+-``public domain'' software (which would include this library), some
+-only restrict the export of software in tangible form, and others impose
+-significant additional restrictions.
+-
+-The United States has additional rules.  This software would generally
+-be exportable under 15 CFR 740.13(e), which permits exports of
+-``encryption source code'' which is ``publicly available'' and which is
+-``not subject to an express agreement for the payment of a licensing fee or
+-royalty for commercial production or sale of any product developed with
+-the source code'' to most countries.
+-
+-The rules in this area are continuously changing.  If you know of any
+-information in this manual that is out-of-date, please report it to
+-the bug database.  @xref{Reporting Bugs}.
+-
+-@node getpass
+-@section Reading Passwords
+-
+-When reading in a password, it is desirable to avoid displaying it on
+-the screen, to help keep it secret.  The following function handles this
+-in a convenient way.
+-
+-@deftypefun {char *} getpass (const char *@var{prompt})
+-@standards{BSD, unistd.h}
+-@safety{@prelim{}@mtunsafe{@mtasuterm{}}@asunsafe{@ascuheap{} @asulock{} @asucorrupt{}}@acunsafe{@acuterm{} @aculock{} @acucorrupt{}}}
+-@c This function will attempt to create a stream for terminal I/O, but
+-@c will fallback to stdio/stderr.  It attempts to change the terminal
+-@c mode in a thread-unsafe way, write out the prompt, read the password,
+-@c then restore the terminal mode.  It has a cleanup to close the stream
+-@c in case of (synchronous) cancellation, but not to restore the
+-@c terminal mode.
+-
+-@code{getpass} outputs @var{prompt}, then reads a string in from the
+-terminal without echoing it.  It tries to connect to the real terminal,
+-@file{/dev/tty}, if possible, to encourage users not to put plaintext
+-passwords in files; otherwise, it uses @code{stdin} and @code{stderr}.
+-@code{getpass} also disables the INTR, QUIT, and SUSP characters on the
+-terminal using the @code{ISIG} terminal attribute (@pxref{Local Modes}).
+-The terminal is flushed before and after @code{getpass}, so that
+-characters of a mistyped password are not accidentally visible.
+-
+-In other C libraries, @code{getpass} may only return the first
+-@code{PASS_MAX} bytes of a password.  @Theglibc{} has no limit, so
+-@code{PASS_MAX} is undefined.
+-
+-The prototype for this function is in @file{unistd.h}.  @code{PASS_MAX}
+-would be defined in @file{limits.h}.
+-@end deftypefun
+-
+-This precise set of operations may not suit all possible situations.  In
+-this case, it is recommended that users write their own @code{getpass}
+-substitute.  For instance, a very simple substitute is as follows:
+-
+-@smallexample
+-@include mygetpass.c.texi
+-@end smallexample
+-
+-The substitute takes the same parameters as @code{getline}
+-(@pxref{Line Input}); the user must print any prompt desired.
+-
+-@node crypt
+-@section Encrypting Passwords
+-
+ @deftypefun {char *} crypt (const char *@var{key}, const char *@var{salt})
+ @standards{BSD, crypt.h}
+ @standards{SVID, crypt.h}
+ @safety{@prelim{}@mtunsafe{@mtasurace{:crypt}}@asunsafe{@asucorrupt{} @asulock{} @ascuheap{} @ascudlopen{}}@acunsafe{@aculock{} @acsmem{}}}
+ @c Besides the obvious problem of returning a pointer into static
+@@ -175,10 +84,27 @@ When the user enters their password for
+ should be set to a new string which is reasonably random.  To verify a
+ password against the result of a previous call to @code{crypt}, pass
+ the result of the previous call as the @var{salt}.
+ @end deftypefun
+ 
++@deftypefun {char *} crypt_r (const char *@var{key}, const char *@var{salt}, {struct crypt_data *} @var{data})
++@standards{GNU, crypt.h}
++@safety{@prelim{}@mtsafe{}@asunsafe{@asucorrupt{} @asulock{} @ascuheap{} @ascudlopen{}}@acunsafe{@aculock{} @acsmem{}}}
++@c Compared with crypt, this function fixes the @mtasurace:crypt
++@c problem, but nothing else.
++
++The @code{crypt_r} function does the same thing as @code{crypt}, but
++takes an extra parameter which includes space for its result (among
++other things), so it can be reentrant.  @code{data@w{->}initialized} must be
++cleared to zero before the first time @code{crypt_r} is called.
++
++The @code{crypt_r} function is a GNU extension.
++@end deftypefun
++
++The @code{crypt} and @code{crypt_r} functions are prototyped in the
++header @file{crypt.h}.
++
+ The following short program is an example of how to use @code{crypt} the
+ first time a password is entered.  Note that the @var{salt} generation
+ is just barely acceptable; in particular, it is not unique between
+ machines, and in many applications it would not be acceptable to let an
+ attacker know what time the user's password was last set.
+@@ -193,27 +119,10 @@ for a password and prints ``Access grant
+ 
+ @smallexample
+ @include testpass.c.texi
+ @end smallexample
+ 
+-@deftypefun {char *} crypt_r (const char *@var{key}, const char *@var{salt}, {struct crypt_data *} @var{data})
+-@standards{GNU, crypt.h}
+-@safety{@prelim{}@mtsafe{}@asunsafe{@asucorrupt{} @asulock{} @ascuheap{} @ascudlopen{}}@acunsafe{@aculock{} @acsmem{}}}
+-@c Compared with crypt, this function fixes the @mtasurace:crypt
+-@c problem, but nothing else.
+-
+-The @code{crypt_r} function does the same thing as @code{crypt}, but
+-takes an extra parameter which includes space for its result (among
+-other things), so it can be reentrant.  @code{data@w{->}initialized} must be
+-cleared to zero before the first time @code{crypt_r} is called.
+-
+-The @code{crypt_r} function is a GNU extension.
+-@end deftypefun
+-
+-The @code{crypt} and @code{crypt_r} functions are prototyped in the
+-header @file{crypt.h}.
+-
+ @node Unpredictable Bytes
+ @section Generating Unpredictable Bytes
+ 
+ Some cryptographic applications (such as session key generation) need
+ unpredictable bytes.
+Index: glibc-2.27/manual/terminal.texi
+===================================================================
+--- glibc-2.27.orig/manual/terminal.texi	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/manual/terminal.texi	2018-12-18 10:19:32.532147531 +0000
+@@ -22,10 +22,11 @@ descriptor is and how to open a file des
+                                  signals, editing.  Posix.
+ * BSD Terminal Modes::          BSD compatible terminal mode setting
+ * Line Control::                Sending break sequences, clearing
+                                  terminal buffers @dots{}
+ * Noncanon Example::            How to read single characters without echo.
++* getpass::                     Prompting the user for a password.
+ * Pseudo-Terminals::            How to open a pseudo-terminal.
+ @end menu
+ 
+ @node Is It a Terminal
+ @section Identifying Terminals
+@@ -1869,10 +1870,54 @@ The shell is supposed to take care of re
+ a process is stopped or continued; see @ref{Job Control}.  But some
+ existing shells do not actually do this, so you may wish to establish
+ handlers for job control signals that reset terminal modes.  The above
+ example does so.
+ 
++@node getpass
++@section Reading Passwords
++
++When reading in a password, it is desirable to avoid displaying it on
++the screen, to help keep it secret.  The following function handles this
++in a convenient way.
++
++@deftypefun {char *} getpass (const char *@var{prompt})
++@standards{BSD, unistd.h}
++@safety{@prelim{}@mtunsafe{@mtasuterm{}}@asunsafe{@ascuheap{} @asulock{} @asucorrupt{}}@acunsafe{@acuterm{} @aculock{} @acucorrupt{}}}
++@c This function will attempt to create a stream for terminal I/O, but
++@c will fallback to stdio/stderr.  It attempts to change the terminal
++@c mode in a thread-unsafe way, write out the prompt, read the password,
++@c then restore the terminal mode.  It has a cleanup to close the stream
++@c in case of (synchronous) cancellation, but not to restore the
++@c terminal mode.
++
++@code{getpass} outputs @var{prompt}, then reads a string in from the
++terminal without echoing it.  It tries to connect to the real terminal,
++@file{/dev/tty}, if possible, to encourage users not to put plaintext
++passwords in files; otherwise, it uses @code{stdin} and @code{stderr}.
++@code{getpass} also disables the INTR, QUIT, and SUSP characters on the
++terminal using the @code{ISIG} terminal attribute (@pxref{Local Modes}).
++The terminal is flushed before and after @code{getpass}, so that
++characters of a mistyped password are not accidentally visible.
++
++In other C libraries, @code{getpass} may only return the first
++@code{PASS_MAX} bytes of a password.  @Theglibc{} has no limit, so
++@code{PASS_MAX} is undefined.
++
++The prototype for this function is in @file{unistd.h}.  @code{PASS_MAX}
++would be defined in @file{limits.h}.
++@end deftypefun
++
++This precise set of operations may not suit all possible situations.  In
++this case, it is recommended that users write their own @code{getpass}
++substitute.  For instance, a very simple substitute is as follows:
++
++@smallexample
++@include mygetpass.c.texi
++@end smallexample
++
++The substitute takes the same parameters as @code{getline}
++(@pxref{Line Input}); the user must print any prompt desired.
+ 
+ @node Pseudo-Terminals
+ @section Pseudo-Terminals
+ @cindex pseudo-terminals
+ 

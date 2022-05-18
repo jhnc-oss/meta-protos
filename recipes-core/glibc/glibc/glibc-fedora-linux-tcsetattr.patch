@@ -1,0 +1,56 @@
+Index: glibc-2.27/sysdeps/unix/sysv/linux/tcsetattr.c
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/sysv/linux/tcsetattr.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/sysdeps/unix/sysv/linux/tcsetattr.c	2018-12-18 10:14:50.796669709 +0000
+@@ -43,10 +43,11 @@
+ int
+ __tcsetattr (int fd, int optional_actions, const struct termios *termios_p)
+ {
+   struct __kernel_termios k_termios;
+   unsigned long int cmd;
++  int retval;
+ 
+   switch (optional_actions)
+     {
+     case TCSANOW:
+       cmd = TCSETS;
+@@ -73,9 +74,38 @@ __tcsetattr (int fd, int optional_action
+   k_termios.c_ospeed = termios_p->c_ospeed;
+ #endif
+   memcpy (&k_termios.c_cc[0], &termios_p->c_cc[0],
+ 	  __KERNEL_NCCS * sizeof (cc_t));
+ 
+-  return INLINE_SYSCALL (ioctl, 3, fd, cmd, &k_termios);
++  retval = INLINE_SYSCALL (ioctl, 3, fd, cmd, &k_termios);
++
++  if (retval == 0 && cmd == TCSETS)
++    {
++      /* The Linux kernel has a bug which silently ignore the invalid
++        c_cflag on pty. We have to check it here. */
++      int save = errno;
++      retval = INLINE_SYSCALL (ioctl, 3, fd, TCGETS, &k_termios);
++      if (retval)
++       {
++         /* We cannot verify if the setting is ok. We don't return
++            an error (?). */
++         __set_errno (save);
++         retval = 0;
++       }
++      else if ((termios_p->c_cflag & (PARENB | CREAD))
++              != (k_termios.c_cflag & (PARENB | CREAD))
++              || ((termios_p->c_cflag & CSIZE)
++                  && ((termios_p->c_cflag & CSIZE)
++                      != (k_termios.c_cflag & CSIZE))))
++       {
++         /* It looks like the Linux kernel silently changed the
++            PARENB/CREAD/CSIZE bits in c_cflag. Report it as an
++            error. */
++         __set_errno (EINVAL);
++         retval = -1;
++       }
++    }
++
++  return retval;
+ }
+ weak_alias (__tcsetattr, tcsetattr)
+ libc_hidden_def (tcsetattr)

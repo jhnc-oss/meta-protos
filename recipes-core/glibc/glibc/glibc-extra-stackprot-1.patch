@@ -1,0 +1,33 @@
+commit 38cade0c461e58770749d7e8973f85c79532838a
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Thu Jul 5 19:28:11 2018 +0200
+
+    Compile debug/stack_chk_fail_local.c with stack protector
+    
+    The resulting object file is statically linked into applications, so
+    it is desirable to have (formal) stack protector coverage there.
+
+Index: glibc-2.27/debug/Makefile
+===================================================================
+--- glibc-2.27.orig/debug/Makefile	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/debug/Makefile	2018-12-18 10:18:47.445711189 +0000
+@@ -56,14 +56,17 @@ static-only-routines := warning-nop stac
+ # Don't add stack_chk_fail_local.o to libc.a since __stack_chk_fail_local
+ # is an alias of __stack_chk_fail in stack_chk_fail.o.
+ elide-routines.o := stack_chk_fail_local
+ 
+ # Building the stack-protector failure routines with stack protection
+-# makes no sense.
++# is not required since we have already failed a stack check and are
++# exiting the process.  However, the local aliases which jump to the
++# real routines should still be compiled with stack protection
++# (stack_chk_fail_local.c), so that the statically linked parts of the
++# library have the expected flags.
+ 
+ CFLAGS-stack_chk_fail.c += $(no-stack-protector)
+-CFLAGS-stack_chk_fail_local.c += $(no-stack-protector)
+ 
+ CFLAGS-backtrace.c += -fno-omit-frame-pointer -funwind-tables
+ CFLAGS-sprintf_chk.c += $(libio-mtsafe)
+ CFLAGS-snprintf_chk.c += $(libio-mtsafe)
+ CFLAGS-vsprintf_chk.c += $(libio-mtsafe)
