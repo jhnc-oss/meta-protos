@@ -1,0 +1,19 @@
+Introduce a dummy version GLIBC_2.28, so that the compat symbol checks
+give the right result for the glibc 2.27 backport (i.e., the symbols are
+still built into 2.27 libraries).
+
+This is not needed upstream because of the 2.28 version number there.
+
+Index: glibc-2.27/crypt/Versions
+===================================================================
+--- glibc-2.27.orig/crypt/Versions	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/crypt/Versions	2018-12-18 10:18:21.940030054 +0000
+@@ -1,5 +1,8 @@
+ libcrypt {
+   GLIBC_2.0 {
+     crypt; crypt_r; encrypt; encrypt_r; fcrypt; setkey; setkey_r;
+   }
++  GLIBC_2.28 {
++    # Dummy entry to make conditionals for compat symbols work.
++  }
+ }

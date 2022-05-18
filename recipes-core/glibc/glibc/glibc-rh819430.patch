@@ -1,0 +1,103 @@
+Index: glibc-2.27/posix/fnmatch.c
+===================================================================
+--- glibc-2.27.orig/posix/fnmatch.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/posix/fnmatch.c	2018-12-18 10:17:15.336862708 +0000
+@@ -320,10 +320,11 @@ int
+ fnmatch (const char *pattern, const char *string, int flags)
+ {
+ # if HANDLE_MULTIBYTE
+   if (__builtin_expect (MB_CUR_MAX, 1) != 1)
+     {
++      const char *orig_pattern = pattern;
+       mbstate_t ps;
+       size_t n;
+       const char *p;
+       wchar_t *wpattern_malloc = NULL;
+       wchar_t *wpattern;
+@@ -343,14 +344,12 @@ fnmatch (const char *pattern, const char
+ 	{
+ 	  wpattern = (wchar_t *) alloca_account ((n + 1) * sizeof (wchar_t),
+ 						 alloca_used);
+ 	  n = mbsrtowcs (wpattern, &p, n + 1, &ps);
+ 	  if (__glibc_unlikely (n == (size_t) -1))
+-	    /* Something wrong.
+-	       XXX Do we have to set `errno' to something which mbsrtows hasn't
+-	       already done?  */
+-	    return -1;
++	    /* Something wrong: Fall back to single byte matching. */
++	    goto try_singlebyte;
+ 	  if (p)
+ 	    {
+ 	      memset (&ps, '\0', sizeof (ps));
+ 	      goto prepare_wpattern;
+ 	    }
+@@ -358,14 +357,12 @@ fnmatch (const char *pattern, const char
+       else
+ 	{
+ 	prepare_wpattern:
+ 	  n = mbsrtowcs (NULL, &pattern, 0, &ps);
+ 	  if (__glibc_unlikely (n == (size_t) -1))
+-	    /* Something wrong.
+-	       XXX Do we have to set `errno' to something which mbsrtows hasn't
+-	       already done?  */
+-	    return -1;
++	    /*Something wrong: Fall back to single byte matching. */
++	    goto try_singlebyte;
+ 	  if (__glibc_unlikely (n >= (size_t) -1 / sizeof (wchar_t)))
+ 	    {
+ 	      __set_errno (ENOMEM);
+ 	      return -2;
+ 	    }
+@@ -388,18 +385,12 @@ fnmatch (const char *pattern, const char
+ 	{
+ 	  wstring = (wchar_t *) alloca_account ((n + 1) * sizeof (wchar_t),
+ 						alloca_used);
+ 	  n = mbsrtowcs (wstring, &p, n + 1, &ps);
+ 	  if (__glibc_unlikely (n == (size_t) -1))
+-	    {
+-	      /* Something wrong.
+-		 XXX Do we have to set `errno' to something which
+-		 mbsrtows hasn't already done?  */
+-	    free_return:
+-	      free (wpattern_malloc);
+-	      return -1;
+-	    }
++	    /* Something wrong: Fall back to single byte matching. */
++	    goto free_and_try_singlebyte;
+ 	  if (p)
+ 	    {
+ 	      memset (&ps, '\0', sizeof (ps));
+ 	      goto prepare_wstring;
+ 	    }
+@@ -407,14 +398,12 @@ fnmatch (const char *pattern, const char
+       else
+ 	{
+ 	prepare_wstring:
+ 	  n = mbsrtowcs (NULL, &string, 0, &ps);
+ 	  if (__glibc_unlikely (n == (size_t) -1))
+-	    /* Something wrong.
+-	       XXX Do we have to set `errno' to something which mbsrtows hasn't
+-	       already done?  */
+-	    goto free_return;
++	    /* Something wrong: Fall back to singlebyte matching. */
++	    goto free_and_try_singlebyte;
+ 	  if (__glibc_unlikely (n >= (size_t) -1 / sizeof (wchar_t)))
+ 	    {
+ 	      free (wpattern_malloc);
+ 	      __set_errno (ENOMEM);
+ 	      return -2;
+@@ -437,10 +426,14 @@ fnmatch (const char *pattern, const char
+ 
+       free (wstring_malloc);
+       free (wpattern_malloc);
+ 
+       return res;
++      free_and_try_singlebyte:
++	free(wpattern_malloc);
++      try_singlebyte:
++	pattern = orig_pattern;
+     }
+ # endif  /* mbstate_t and mbsrtowcs or _LIBC.  */
+ 
+   return internal_fnmatch (pattern, string, string + strlen (string),
+ 			   flags & FNM_PERIOD, flags, NULL, 0);

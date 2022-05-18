@@ -1,0 +1,1819 @@
+From the upstream branch fw/extend_alloca.
+
+commit dc79f9aa56933dc8b475209f9a4059965b50ea26
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 18:29:47 2015 +0100
+
+    nscd restart: Use malloc instead of extend_alloca
+    
+    This introduces a separate function, read_cmdline, which reads the
+    contents of /proc/self/cmdline into a heap-allocated buffer.
+    
+    	[BZ #18023]
+    	* nscd/connections.c (read_cmdline): New function.
+    	(restart): Use it.  Update comment.
+
+commit 9bed8b7fca7867d3027b66ce3985a75136aed013
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 15:14:19 2015 +0100
+
+    getgrent_next_nss (compat-initgroups): Remove alloca fallback
+    
+    If the caller-supplied buffer is not large enough, fall back directly
+    malloc.
+    
+    The previous __libc_use_alloca check was incorrect because it did not
+    take into account that extend_alloca may fail to merge allocations, so
+    it would underestimate the stack space being used by roughly a factor
+    of two.
+    
+    	[BZ #18023]
+    	* nis/nss_compat/compat-initgroups.c (getgrent_next_nss): Fall
+    	back to malloc directly, without stack allocations.
+
+commit c95cc759ecb21f812872934ac55518aef28cf46b
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 16:03:01 2015 +0100
+
+    _dl_map_object_deps: Use struct scratch_buffer instead of extend_alloca
+    
+    The function comment suggests that _dl_map_object_deps cannot use
+    malloc, but it already allocates the l_initfini array on the heap, so
+    the additional allocation should be acceptable.
+    
+    	[BZ #18023]
+    	* elf/dl-deps.c (_dl_map_object_deps): Use struct
+    	scratch_buffer instead of extend_alloca.
+
+commit e38bff4db6f03d1fab732737f43a25160c3e4703
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 16:18:21 2015 +0100
+
+    _nss_nis_initgroups_dyn: Use struct scratch_buffer instead of extend_alloca
+    
+    Also adjusts the internal function get_uid.
+    
+    	[BZ #18023]
+            * nis/nss_nis/nis-initgroups.c (get_uid, _nss_nis_initgroups_dyn):
+    	Use struct scratch_buffer instead of extend_alloca.
+
+commit 8825d4709a686a870d313cc602d489ddd5354a08
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 18:55:33 2015 +0100
+
+    nscd: Use struct scratch_buffer instead of extend_alloca in most caches
+    
+    This replaces the ERANGE retry loops with loops which have heap
+    fallback.  Heap allocation might actually be required for extremely
+    large NSS results.
+    
+    	[BZ #18023]
+    	* nscd/grpcache.c (addgrbyX): Use struct scratch_buffer instead
+    	of extend_alloca.
+    	* nscd/hstcache.c (addhstbyX): Likewise.
+    	* nscd/pwdcache.c (addpwbyX): Likewise.
+    	* nscd/servicescache.c (addservbyX): Likewise.
+
+commit 140d8711d446f5193b04b56e714ddf8d0eddbf62
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 18:59:48 2015 +0100
+
+    nscd: Switch to struct scratch_buffer in adhstaiX
+    
+    The pre-allocation of the three scratch buffers increased the initial
+    stack size somewhat, but if retries are needed, the previous version
+    used more stack space if extend_alloca could not merge allocations.
+    Lack of alloca accounting also means could be problematic with
+    extremely large NSS responses, too.
+    
+    	[BZ #18023]
+    	* nscd/aicache.c (addhstaiX): Use struct scratch_buffer instead
+    	of extend_alloca.
+
+commit 1af14faef808f03276766e5ee6d9ee7dc9053fba
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 19:03:01 2015 +0100
+
+    getent: Switch to struct scratch_buffer in initgroups_keys
+    
+    The retry loop is slightly different here because getgrouplist
+    provides size information, so scratch_buffer_set_array_size can be
+    used to grow the buffer in a more precise fashion.
+    
+    	[BZ #18023]
+    	* nss/getent.c (initgroups_keys): Use struct scratch_buffer
+    	instead of extend_alloca.
+
+commit 9b71d3b4df6dd4e49f7638d1d936c921c50fa3d9
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 19:09:00 2015 +0100
+
+    nss_files: Use struct scratch_buffer instead of extend_alloca
+    
+    In both _nss_files_gethostbyname3_r and _nss_files_initgroups_dyn,
+    __libc_use_alloca was misused because it was not taken into account
+    that extend_alloca can fail to merge allocations.
+    
+    	[BZ #18023]
+    	* nss/nss_files/files-hosts.c (_nss_files_gethostbyname3_r):
+    	Use struct scratch_buffer instead of extend_alloca.
+    	* nss/nss_files/files-initgroups.c (_nss_files_initgroups_dyn):
+    	Likewise.
+
+commit 11c2a8bad9ca5fe510b73c0204b3dcf703f14d5c
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 19:11:55 2015 +0100
+
+    gethostid (Linux variant): Switch to struct scratch_buffer
+    
+    Previously, extend_alloca was used without alloca accounting,
+    which could have been problematic with large NSS results.
+    
+    	[BZ #18023]
+    	* sysdeps/unix/sysv/linux/gethostid.c (gethostid): Use struct
+    	scratch_buffer instead of extend_alloca.
+
+commit 6de00dd8a3a76d0b7586393451e65ad6c2721a71
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 19:14:29 2015 +0100
+
+    getlogin_r (Linux variant): Switch to struct scratch_buffer
+    
+    This corrects the alloca accounting as a side effect.  It was not off
+    if extend_alloca failed to merge allocations.
+    
+    	[BZ #18023]
+    	* sysdeps/unix/sysv/linux/getlogin_r.c (__getlogin_r_loginuid):
+    	Use struct scratch_buffer instead of extend_alloca.
+
+commit 488063238ee5c87b66c6982b1b6d508e30e44386
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 19:48:31 2015 +0100
+
+    wordexp: Rewrite parse_tilde to use struct scratch_buffer
+    
+    	[BZ #18023]
+    	* posix/wordexp.c (parse_tilde): Use struct scratch_buffer
+    	instead of extend_alloca.
+
+commit 683543bbb3e2c1b17554c4096d00c2980f39a802
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sun Mar 1 23:22:45 2015 +0100
+
+    Remove macros extend_alloca, extend_alloca_account [BZ #18023]
+    
+    And also the helper macro stackinfo_alloca_round.
+    
+    extend_alloca simply does not work on x86_64 and current i386 because
+    its peculiar stack alignment rules.
+    
+    Here's an analysis of the _dl_fini situation (before the removal of
+    extend_alloca).
+    
+    Dump of assembler code for function _dl_fini:
+    <+0>:	push   %rbp
+    <+1>:	mov    %rsp,%rbp
+    <+4>:	push   %r15
+    <+6>:	push   %r14
+    <+8>:	push   %r13
+    <+10>:	push   %r12
+    <+12>:	push   %rbx
+    <+13>:	sub    $0x38,%rsp
+    
+    The function pushes 6 registers on the stack and allocates 0x38 bytes,
+    which means that %rsp is a multiple of 16 after function prologue.
+    
+    The initial alloca allocation does not change %rsp alignment:
+    
+    <+210>:	shr    $0x4,%rcx
+    <+214>:	shl    $0x4,%rcx
+    <+218>:	sub    %rcx,%rsp
+    
+    %r15 is the address of the previous stack allocation, it is used below.
+    
+    This is the extend_alloca reallocation branch:
+    
+    <+734>:	add    $0xf,%rdx
+    <+738>:	and    $0xfffffffffffffff0,%rdx
+    <+742>:	lea    0x1e(%rdx),%rcx
+    <+746>:	shr    $0x4,%rcx
+    <+750>:	shl    $0x4,%rcx
+    <+754>:	sub    %rcx,%rsp
+    <+757>:	lea    0xf(%rsp),%rcx
+    <+762>:	and    $0xfffffffffffffff0,%rcx
+    <+766>:	lea    (%rcx,%rdx,1),%rsi
+    <+770>:	cmp    %rsi,%r15
+    <+773>:	je     0x7f963940b673 <_dl_fini+787>
+    <+775>:	mov    %rdx,-0x58(%rbp)
+    <+787>:	add    %rdx,-0x58(%rbp)
+    
+    (a) %rdx, the new requested size, is rounded up to a multiple of 16
+    (+734, %+738), and the result is stored in %rdx@738.
+    
+    (b) %rdx@738 + 31 is rounded down to a multiple of 16, the result is
+    stored in rcx@750 (+742, +746, +750).  So %rcx@750 == %rdx@738 + 16.
+    
+    (c) %rcx@750 bytes are allocated on the stack (+754).  %rsp is rounded
+    upwards to a multiple of 16, result is stored in %rcx@762 (+757, +762).
+    This does not change the value of %rsp because it already was a multiple
+    of 16.
+    
+    (d) %rsi@766 == %rcx@762 + %rdx@738 is compared against %r15.  But this
+    comparison is always false because we allocated 16 extra bytes on the
+    stack in (b), which were reserved for the alignment in (c), but in fact
+    unused.  We are left with a gap in stack usage, and the comparison is
+    always false.
+    
+    (@XXX refers to register values after executing the instruction at
+    offset +XXX.)
+    
+    If the alignment gap was actually used because of different alignment
+    for %rsp, then the comparison failure would still occur because the gap
+    would not have been added after this reallocation, but before the
+    previous allocation.
+    
+    As a result, extend_alloca is never able to merge allocations.  It also
+    turns out that the interface is difficult to use, especially in
+    cojunction with alloca account (which is rarely optional).
+    
+    	[BZ #18023]
+    	* include/alloca.h (stackinfo_alloca_round, extend_alloca,
+    	extend_alloca_account): Remove.
+
+Index: glibc-2.27/elf/dl-deps.c
+===================================================================
+--- glibc-2.27.orig/elf/dl-deps.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/elf/dl-deps.c	2018-12-18 10:17:17.230839030 +0000
+@@ -25,10 +25,11 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+ #include <sys/param.h>
+ #include <ldsodefs.h>
++#include <scratch_buffer.h>
+ 
+ #include <dl-dst.h>
+ 
+ /* Whether an shared object references one or more auxiliary objects
+    is signaled by the AUXTAG entry in l_info.  */
+@@ -179,13 +180,12 @@ _dl_map_object_deps (struct link_map *ma
+   known[nlist - 1].next = NULL;
+ 
+   /* Pointer to last unique object.  */
+   tail = &known[nlist - 1];
+ 
+-  /* No alloca'd space yet.  */
+-  struct link_map **needed_space = NULL;
+-  size_t needed_space_bytes = 0;
++  struct scratch_buffer needed_space;
++  scratch_buffer_init (&needed_space);
+ 
+   /* Process each element of the search list, loading each of its
+      auxiliary objects and immediate dependencies.  Auxiliary objects
+      will be added in the list before the object itself and
+      dependencies will be appended to the list as we step through it.
+@@ -211,17 +211,16 @@ _dl_map_object_deps (struct link_map *ma
+       /* Allocate a temporary record to contain the references to the
+ 	 dependencies of this object.  */
+       if (l->l_searchlist.r_list == NULL && l->l_initfini == NULL
+ 	  && l != map && l->l_ldnum > 0)
+ 	{
+-	  size_t new_size = l->l_ldnum * sizeof (struct link_map *);
+-
+-	  if (new_size > needed_space_bytes)
+-	    needed_space
+-	      = extend_alloca (needed_space, needed_space_bytes, new_size);
+-
+-	  needed = needed_space;
++	  /* l->l_ldnum includes space for the terminating NULL.  */
++	  if (!scratch_buffer_set_array_size
++	      (&needed_space, l->l_ldnum, sizeof (struct link_map *)))
++	    _dl_signal_error (ENOMEM, map->l_name, NULL,
++			      N_("cannot allocate dependency buffer"));
++	  needed = needed_space.data;
+ 	}
+ 
+       if (l->l_info[DT_NEEDED] || l->l_info[AUXTAG] || l->l_info[FILTERTAG])
+ 	{
+ 	  const char *strtab = (const void *) D_PTR (l, l_info[DT_STRTAB]);
+@@ -436,12 +435,15 @@ _dl_map_object_deps (struct link_map *ma
+ 	  needed[nneeded++] = NULL;
+ 
+ 	  struct link_map **l_initfini = (struct link_map **)
+ 	    malloc ((2 * nneeded + 1) * sizeof needed[0]);
+ 	  if (l_initfini == NULL)
+-	    _dl_signal_error (ENOMEM, map->l_name, NULL,
+-			      N_("cannot allocate dependency list"));
++	    {
++	      scratch_buffer_free (&needed_space);
++	      _dl_signal_error (ENOMEM, map->l_name, NULL,
++				N_("cannot allocate dependency list"));
++	    }
+ 	  l_initfini[0] = l;
+ 	  memcpy (&l_initfini[1], needed, nneeded * sizeof needed[0]);
+ 	  memcpy (&l_initfini[nneeded + 1], l_initfini,
+ 		  nneeded * sizeof needed[0]);
+ 	  atomic_write_barrier ();
+@@ -455,10 +457,12 @@ _dl_map_object_deps (struct link_map *ma
+ 	  runp = runp->next;
+ 	while (runp != NULL && runp->done);
+     }
+ 
+  out:
++  scratch_buffer_free (&needed_space);
++
+   if (errno == 0 && errno_saved != 0)
+     __set_errno (errno_saved);
+ 
+   struct link_map **old_l_initfini = NULL;
+   if (map->l_initfini != NULL && map->l_type == lt_loaded)
+Index: glibc-2.27/include/alloca.h
+===================================================================
+--- glibc-2.27.orig/include/alloca.h	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/include/alloca.h	2018-12-18 10:17:17.235838968 +0000
+@@ -21,60 +21,20 @@ libc_hidden_proto (__libc_alloca_cutoff)
+ 
+ #define __MAX_ALLOCA_CUTOFF	65536
+ 
+ #include <allocalim.h>
+ 
+-#ifndef stackinfo_alloca_round
+-# define stackinfo_alloca_round(l) (((l) + 15) & -16)
+-#endif
+-
+-#if _STACK_GROWS_DOWN
+-# define extend_alloca(buf, len, newlen) \
+-  (__typeof (buf)) ({ size_t __newlen = stackinfo_alloca_round (newlen);      \
+-		      char *__newbuf = __alloca (__newlen);		      \
+-		      if (__newbuf + __newlen == (char *) (buf))	      \
+-			len += __newlen;				      \
+-		      else						      \
+-			len = __newlen;					      \
+-		      __newbuf; })
+-#elif _STACK_GROWS_UP
+-# define extend_alloca(buf, len, newlen) \
+-  (__typeof (buf)) ({ size_t __newlen = stackinfo_alloca_round (newlen);      \
+-		      char *__newbuf = __alloca (__newlen);		      \
+-		      char *__buf = (char *) (buf);			      \
+-		      if (__buf + len == __newbuf)			      \
+-			{						      \
+-			  len += __newlen;				      \
+-			  __newbuf = __buf;				      \
+-			}						      \
+-		      else						      \
+-			len = __newlen;					      \
+-		      __newbuf; })
+-#else
+-# define extend_alloca(buf, len, newlen) \
+-  __alloca (((len) = (newlen)))
+-#endif
+-
+ #if defined stackinfo_get_sp && defined stackinfo_sub_sp
+ # define alloca_account(size, avar) \
+   ({ void *old__ = stackinfo_get_sp ();					      \
+      void *m__ = __alloca (size);					      \
+      avar += stackinfo_sub_sp (old__);					      \
+      m__; })
+-# define extend_alloca_account(buf, len, newlen, avar) \
+-  ({ void *old__ = stackinfo_get_sp ();					      \
+-     void *m__ = extend_alloca (buf, len, newlen);			      \
+-     avar += stackinfo_sub_sp (old__);					      \
+-     m__; })
+ #else
+ # define alloca_account(size, avar) \
+   ({ size_t s__ = (size);						      \
+      avar += s__;							      \
+      __alloca (s__); })
+-# define extend_alloca_account(buf, len, newlen, avar) \
+-  ({ size_t s__ = (newlen);						      \
+-     avar += s__;							      \
+-     extend_alloca (buf, len, s__); })
+ #endif
+ 
+ # endif /* !_ISOMAC */
+ #endif
+Index: glibc-2.27/nis/nss_nis/nis-initgroups.c
+===================================================================
+--- glibc-2.27.orig/nis/nss_nis/nis-initgroups.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nis/nss_nis/nis-initgroups.c	2018-12-18 10:17:17.239838918 +0000
+@@ -14,21 +14,21 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#include <alloca.h>
+ #include <ctype.h>
+ #include <errno.h>
+ #include <grp.h>
+ #include <nss.h>
+ #include <pwd.h>
+ #include <string.h>
+ #include <unistd.h>
+ #include <rpcsvc/yp.h>
+ #include <rpcsvc/ypclnt.h>
+ #include <sys/param.h>
++#include <scratch_buffer.h>
+ 
+ #include "nss-nis.h"
+ #include <libnsl.h>
+ 
+ /* Get the declaration of the parser function.  */
+@@ -118,31 +118,34 @@ internal_getgrent_r (struct group *grp,
+ 
+ 
+ static int
+ get_uid (const char *user, uid_t *uidp)
+ {
+-  size_t buflen = sysconf (_SC_GETPW_R_SIZE_MAX);
+-  char *buf = (char *) alloca (buflen);
++  struct scratch_buffer tmpbuf;
++  scratch_buffer_init (&tmpbuf);
+ 
+   while (1)
+     {
+       struct passwd result;
+       struct passwd *resp;
+ 
+-      int r = getpwnam_r (user, &result, buf, buflen, &resp);
++      int r = getpwnam_r (user, &result, tmpbuf.data, tmpbuf.length, &resp);
+       if (r == 0 && resp != NULL)
+ 	{
+ 	  *uidp = resp->pw_uid;
++	  scratch_buffer_free (&tmpbuf);
+ 	  return 0;
+ 	}
+ 
+       if (r != ERANGE)
+ 	break;
+ 
+-      buf = extend_alloca (buf, buflen, 2 * buflen);
++      if (!scratch_buffer_grow (&tmpbuf))
++	return 1;
+     }
+ 
++  scratch_buffer_free (&tmpbuf);
+   return 1;
+ }
+ 
+ 
+ static enum nss_status
+@@ -252,29 +255,33 @@ _nss_nis_initgroups_dyn (const char *use
+ 			       errnop, domainname) == NSS_STATUS_SUCCESS)
+ 	return NSS_STATUS_SUCCESS;
+     }
+ 
+   struct group grpbuf, *g;
+-  size_t buflen = sysconf (_SC_GETPW_R_SIZE_MAX);
+-  char *tmpbuf;
+   enum nss_status status;
+   intern_t intern = { NULL, NULL, 0 };
+   gid_t *groups = *groupsp;
+ 
+   status = internal_setgrent (domainname, &intern);
+   if (status != NSS_STATUS_SUCCESS)
+     return status;
+ 
+-  tmpbuf = __alloca (buflen);
++  struct scratch_buffer tmpbuf;
++  scratch_buffer_init (&tmpbuf);
+ 
+   while (1)
+     {
+       while ((status =
+-	      internal_getgrent_r (&grpbuf, tmpbuf, buflen, errnop,
++	      internal_getgrent_r (&grpbuf, tmpbuf.data, tmpbuf.length, errnop,
+ 				   &intern)) == NSS_STATUS_TRYAGAIN
+              && *errnop == ERANGE)
+-	tmpbuf = extend_alloca (tmpbuf, buflen, 2 * buflen);
++	if (!scratch_buffer_grow (&tmpbuf))
++	  {
++	    status = NSS_STATUS_TRYAGAIN;
++	    *errnop = errno;
++	    goto done;
++	  }
+ 
+       if (status != NSS_STATUS_SUCCESS)
+ 	{
+ 	  if (status == NSS_STATUS_NOTFOUND)
+ 	    status = NSS_STATUS_SUCCESS;
+@@ -329,8 +336,9 @@ done:
+     {
+       intern.next = intern.start;
+       intern.start = intern.start->next;
+       free (intern.next);
+     }
++  scratch_buffer_free (&tmpbuf);
+ 
+   return status;
+ }
+Index: glibc-2.27/nscd/aicache.c
+===================================================================
+--- glibc-2.27.orig/nscd/aicache.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nscd/aicache.c	2018-12-18 10:17:17.245838843 +0000
+@@ -26,10 +26,11 @@
+ #include <unistd.h>
+ #include <sys/mman.h>
+ #include <resolv/resolv-internal.h>
+ #include <resolv/resolv_context.h>
+ #include <resolv/res_use_inet6.h>
++#include <scratch_buffer.h>
+ 
+ #include "dbg_log.h"
+ #include "nscd.h"
+ #ifdef HAVE_SENDFILE
+ # include <kernel-features.h>
+@@ -109,14 +110,17 @@ addhstaiX (struct database_dyn *db, int
+   struct resolv_context *ctx = __resolv_context_get ();
+   bool enable_inet6 = __resolv_context_disable_inet6 (ctx);
+   if (ctx == NULL)
+     no_more = 1;
+ 
+-  size_t tmpbuf6len = 1024;
+-  char *tmpbuf6 = alloca (tmpbuf6len);
+-  size_t tmpbuf4len = 0;
+-  char *tmpbuf4 = NULL;
++  struct scratch_buffer tmpbuf6;
++  scratch_buffer_init (&tmpbuf6);
++  struct scratch_buffer tmpbuf4;
++  scratch_buffer_init (&tmpbuf4);
++  struct scratch_buffer canonbuf;
++  scratch_buffer_init (&canonbuf);
++
+   int32_t ttl = INT32_MAX;
+   ssize_t total = 0;
+   char *key_copy = NULL;
+   bool alloca_used = false;
+   time_t timeout = MAX_TIMEOUT_VALUE;
+@@ -125,10 +129,11 @@ addhstaiX (struct database_dyn *db, int
+     {
+       void *cp;
+       int status[2] = { NSS_STATUS_UNAVAIL, NSS_STATUS_UNAVAIL };
+       int naddrs = 0;
+       size_t addrslen = 0;
++
+       char *canon = NULL;
+       size_t canonlen;
+ 
+       nss_gethostbyname4_r fct4 = __nss_lookup_function (nip,
+ 							 "gethostbyname4_r");
+@@ -139,16 +144,21 @@ addhstaiX (struct database_dyn *db, int
+ 	  while (1)
+ 	    {
+ 	      at = &atmem;
+ 	      rc6 = 0;
+ 	      herrno = 0;
+-	      status[1] = DL_CALL_FCT (fct4, (key, &at, tmpbuf6, tmpbuf6len,
++	      status[1] = DL_CALL_FCT (fct4, (key, &at,
++					      tmpbuf6.data, tmpbuf6.length,
+ 					      &rc6, &herrno, &ttl));
+ 	      if (rc6 != ERANGE || (herrno != NETDB_INTERNAL
+ 				    && herrno != TRY_AGAIN))
+ 		break;
+-	      tmpbuf6 = extend_alloca (tmpbuf6, tmpbuf6len, 2 * tmpbuf6len);
++	      if (!scratch_buffer_grow (&tmpbuf6))
++		{
++		  rc6 = ENOMEM;
++		  break;
++		}
+ 	    }
+ 
+ 	  if (rc6 != 0 && herrno == NETDB_INTERNAL)
+ 	    goto out;
+ 
+@@ -222,45 +232,42 @@ addhstaiX (struct database_dyn *db, int
+ 
+ 	  /* Collect IPv6 information first.  */
+ 	  while (1)
+ 	    {
+ 	      rc6 = 0;
+-	      status[0] = DL_CALL_FCT (fct, (key, AF_INET6, &th[0], tmpbuf6,
+-					     tmpbuf6len, &rc6, &herrno, &ttl,
++	      status[0] = DL_CALL_FCT (fct, (key, AF_INET6, &th[0],
++					     tmpbuf6.data, tmpbuf6.length,
++					     &rc6, &herrno, &ttl,
+ 					     &canon));
+ 	      if (rc6 != ERANGE || herrno != NETDB_INTERNAL)
+ 		break;
+-	      tmpbuf6 = extend_alloca (tmpbuf6, tmpbuf6len, 2 * tmpbuf6len);
++	      if (!scratch_buffer_grow (&tmpbuf6))
++		{
++		  rc6 = ENOMEM;
++		  break;
++		}
+ 	    }
+ 
+ 	  if (rc6 != 0 && herrno == NETDB_INTERNAL)
+ 	    goto out;
+ 
+-	  /* If the IPv6 lookup has been successful do not use the
+-	     buffer used in that lookup, use a new one.  */
+-	  if (status[0] == NSS_STATUS_SUCCESS && rc6 == 0)
+-	    {
+-	      tmpbuf4len = 512;
+-	      tmpbuf4 = alloca (tmpbuf4len);
+-	    }
+-	  else
+-	    {
+-	      tmpbuf4len = tmpbuf6len;
+-	      tmpbuf4 = tmpbuf6;
+-	    }
+-
+ 	  /* Next collect IPv4 information.  */
+ 	  while (1)
+ 	    {
+ 	      rc4 = 0;
+-	      status[1] = DL_CALL_FCT (fct, (key, AF_INET, &th[1], tmpbuf4,
+-					     tmpbuf4len, &rc4, &herrno,
++	      status[1] = DL_CALL_FCT (fct, (key, AF_INET, &th[1],
++					     tmpbuf4.data, tmpbuf4.length,
++					     &rc4, &herrno,
+ 					     ttl == INT32_MAX ? &ttl : NULL,
+ 					     canon == NULL ? &canon : NULL));
+ 	      if (rc4 != ERANGE || herrno != NETDB_INTERNAL)
+ 		break;
+-	      tmpbuf4 = extend_alloca (tmpbuf4, tmpbuf4len, 2 * tmpbuf4len);
++	      if (!scratch_buffer_grow (&tmpbuf4))
++		{
++		  rc4 = ENOMEM;
++		  break;
++		}
+ 	    }
+ 
+ 	  if (rc4 != 0 && herrno == NETDB_INTERNAL)
+ 	    goto out;
+ 
+@@ -282,17 +289,15 @@ addhstaiX (struct database_dyn *db, int
+ 	      /* Determine the canonical name.  */
+ 	      nss_getcanonname_r cfct;
+ 	      cfct = __nss_lookup_function (nip, "getcanonname_r");
+ 	      if (cfct != NULL)
+ 		{
+-		  const size_t max_fqdn_len = 256;
+-		  char *buf = alloca (max_fqdn_len);
+ 		  char *s;
+ 		  int rc;
+ 
+-		  if (DL_CALL_FCT (cfct, (key, buf, max_fqdn_len, &s,
+-					  &rc, &herrno))
++		  if (DL_CALL_FCT (cfct, (key, canonbuf.data, canonbuf.length,
++					  &s, &rc, &herrno))
+ 		      == NSS_STATUS_SUCCESS)
+ 		    canon = s;
+ 		  else
+ 		    /* Set to name now to avoid using gethostbyaddr.  */
+ 		    canon = key;
+@@ -317,22 +322,24 @@ addhstaiX (struct database_dyn *db, int
+ 		      addr = th[0].h_addr_list[0];
+ 		      addrlen = sizeof (struct in6_addr);
+ 		      addrfamily = AF_INET6;
+ 		    }
+ 
+-		  size_t tmpbuflen = 512;
+-		  char *tmpbuf = alloca (tmpbuflen);
+ 		  int rc;
+ 		  while (1)
+ 		    {
+ 		      rc = __gethostbyaddr2_r (addr, addrlen, addrfamily,
+-					       &hstent_mem, tmpbuf, tmpbuflen,
++					       &hstent_mem,
++					       canonbuf.data, canonbuf.length,
+ 					       &hstent, &herrno, NULL);
+ 		      if (rc != ERANGE || herrno != NETDB_INTERNAL)
+ 			break;
+-		      tmpbuf = extend_alloca (tmpbuf, tmpbuflen,
+-					      tmpbuflen * 2);
++		      if (!scratch_buffer_grow (&canonbuf))
++			{
++			  rc = ENOMEM;
++			  break;
++			}
+ 		    }
+ 
+ 		  if (rc == 0)
+ 		    {
+ 		      if (hstent != NULL)
+@@ -557,10 +564,14 @@ next_nip:
+       /* Mark the old entry as obsolete.  */
+       if (dh != NULL)
+ 	dh->usable = false;
+     }
+ 
++  scratch_buffer_free (&tmpbuf6);
++  scratch_buffer_free (&tmpbuf4);
++  scratch_buffer_free (&canonbuf);
++
+   return timeout;
+ }
+ 
+ 
+ void
+Index: glibc-2.27/nscd/connections.c
+===================================================================
+--- glibc-2.27.orig/nscd/connections.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nscd/connections.c	2018-12-18 10:17:17.248838805 +0000
+@@ -1323,68 +1323,87 @@ request from '%s' [%ld] not handled due
+       /* Ignore the command, it's nothing we know.  */
+       break;
+     }
+ }
+ 
+-
+-/* Restart the process.  */
+-static void
+-restart (void)
++static char *
++read_cmdline (size_t *size)
+ {
+-  /* First determine the parameters.  We do not use the parameters
+-     passed to main() since in case nscd is started by running the
+-     dynamic linker this will not work.  Yes, this is not the usual
+-     case but nscd is part of glibc and we occasionally do this.  */
+-  size_t buflen = 1024;
+-  char *buf = alloca (buflen);
+-  size_t readlen = 0;
+   int fd = open ("/proc/self/cmdline", O_RDONLY);
+-  if (fd == -1)
+-    {
+-      dbg_log (_("\
+-cannot open /proc/self/cmdline: %s; disabling paranoia mode"),
+-	       strerror (errno));
+-
+-      paranoia = 0;
+-      return;
++  if (fd < 0)
++    return NULL;
++  size_t current = 0;
++  size_t limit = 1024;
++  char *buffer = malloc (limit);
++  if (buffer == NULL)
++    {
++      close (fd);
++      errno = ENOMEM;
++      return NULL;
+     }
+-
+   while (1)
+     {
+-      ssize_t n = TEMP_FAILURE_RETRY (read (fd, buf + readlen,
+-					    buflen - readlen));
+-      if (n == -1)
++      if (current == limit)
+ 	{
+-	  dbg_log (_("\
+-cannot read /proc/self/cmdline: %s; disabling paranoia mode"),
+-		   strerror (errno));
++	  char *newptr;
++	  if (2 * limit < limit
++	      || (newptr = realloc (buffer, 2 * limit)) == NULL)
++	    {
++	      free (buffer);
++	      close (fd);
++	      errno = ENOMEM;
++	      return NULL;
++	    }
++	  buffer = newptr;
++	  limit *= 2;
++	}
+ 
++      ssize_t n = TEMP_FAILURE_RETRY (read (fd, buffer + current,
++					    limit - current));
++      if (n == -1)
++	{
++	  int e = errno;
++	  free (buffer);
+ 	  close (fd);
+-	  paranoia = 0;
+-	  return;
++	  errno = e;
++	  return NULL;
+ 	}
+-
+-      readlen += n;
+-
+-      if (readlen < buflen)
++      if (n == 0)
+ 	break;
+-
+-      /* We might have to extend the buffer.  */
+-      size_t old_buflen = buflen;
+-      char *newp = extend_alloca (buf, buflen, 2 * buflen);
+-      buf = memmove (newp, buf, old_buflen);
++      current += n;
+     }
+ 
+   close (fd);
++  *size = current;
++  return buffer;
++}
++
++
++/* Restart the process.  */
++static void
++restart (void)
++{
++  /* First determine the parameters.  We do not use the parameters
++     passed to main() because then nscd would would use the system
++     libc after restarting even if it was started by a non-system
++     dynamic linker during glibc testing.  */
++  size_t readlen;
++  char *cmdline = read_cmdline (&readlen);
++  if (cmdline == NULL)
++    {
++      dbg_log (_("\
++cannot open /proc/self/cmdline: %m; disabling paranoia mode"));
++      paranoia = 0;
++      return;
++    }
+ 
+   /* Parse the command line.  Worst case scenario: every two
+      characters form one parameter (one character plus NUL).  */
+   char **argv = alloca ((readlen / 2 + 1) * sizeof (argv[0]));
+   int argc = 0;
+ 
+-  char *cp = buf;
+-  while (cp < buf + readlen)
++  for (char *cp = cmdline; cp < cmdline + readlen;)
+     {
+       argv[argc++] = cp;
+       cp = (char *) rawmemchr (cp, '\0') + 1;
+     }
+   argv[argc] = NULL;
+@@ -1397,10 +1416,11 @@ cannot read /proc/self/cmdline: %s; disa
+ 	  dbg_log (_("\
+ cannot change to old UID: %s; disabling paranoia mode"),
+ 		   strerror (errno));
+ 
+ 	  paranoia = 0;
++	  free (cmdline);
+ 	  return;
+ 	}
+ 
+       if (setresgid (old_gid, old_gid, old_gid) != 0)
+ 	{
+@@ -1408,10 +1428,11 @@ cannot change to old UID: %s; disabling
+ cannot change to old GID: %s; disabling paranoia mode"),
+ 		   strerror (errno));
+ 
+ 	  ignore_value (setuid (server_uid));
+ 	  paranoia = 0;
++	  free (cmdline);
+ 	  return;
+ 	}
+     }
+ 
+   /* Next change back to the old working directory.  */
+@@ -1425,10 +1446,11 @@ cannot change to old working directory:
+ 	{
+ 	  ignore_value (setuid (server_uid));
+ 	  ignore_value (setgid (server_gid));
+ 	}
+       paranoia = 0;
++      free (cmdline);
+       return;
+     }
+ 
+   /* Synchronize memory.  */
+   int32_t certainly[lastdb];
+@@ -1473,10 +1495,11 @@ cannot change to old working directory:
+     }
+   if (chdir ("/") != 0)
+     dbg_log (_("cannot change current working directory to \"/\": %s"),
+ 	     strerror (errno));
+   paranoia = 0;
++  free (cmdline);
+ 
+   /* Reenable the databases.  */
+   time_t now = time (NULL);
+   for (int cnt = 0; cnt < lastdb; ++cnt)
+     if (dbs[cnt].enabled)
+Index: glibc-2.27/nscd/grpcache.c
+===================================================================
+--- glibc-2.27.orig/nscd/grpcache.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nscd/grpcache.c	2018-12-18 10:17:17.250838780 +0000
+@@ -14,11 +14,10 @@
+    GNU General Public License for more details.
+ 
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, see <http://www.gnu.org/licenses/>.  */
+ 
+-#include <alloca.h>
+ #include <assert.h>
+ #include <errno.h>
+ #include <error.h>
+ #include <grp.h>
+ #include <libintl.h>
+@@ -30,10 +29,11 @@
+ #include <string.h>
+ #include <unistd.h>
+ #include <sys/mman.h>
+ #include <sys/socket.h>
+ #include <stackinfo.h>
++#include <scratch_buffer.h>
+ 
+ #include "nscd.h"
+ #include "dbg_log.h"
+ #ifdef HAVE_SENDFILE
+ # include <kernel-features.h>
+@@ -446,62 +446,43 @@ addgrbyX (struct database_dyn *db, int f
+ {
+   /* Search for the entry matching the key.  Please note that we don't
+      look again in the table whether the dataset is now available.  We
+      simply insert it.  It does not matter if it is in there twice.  The
+      pruning function only will look at the timestamp.  */
+-  size_t buflen = 1024;
+-  char *buffer = (char *) alloca (buflen);
++
+   struct group resultbuf;
+   struct group *grp;
+-  bool use_malloc = false;
+   int errval = 0;
++  struct scratch_buffer tmpbuf;
++  scratch_buffer_init (&tmpbuf);
+ 
+   if (__glibc_unlikely (debug_level > 0))
+     {
+       if (he == NULL)
+ 	dbg_log (_("Haven't found \"%s\" in group cache!"), keystr);
+       else
+ 	dbg_log (_("Reloading \"%s\" in group cache!"), keystr);
+     }
+ 
+-  while (lookup (req->type, key, &resultbuf, buffer, buflen, &grp) != 0
++  while (lookup (req->type, key, &resultbuf,
++		 tmpbuf.data, tmpbuf.length, &grp) != 0
+ 	 && (errval = errno) == ERANGE)
+-    {
+-      errno = 0;
+-
+-      if (__glibc_unlikely (buflen > 32768))
+-	{
+-	  char *old_buffer = buffer;
+-	  buflen *= 2;
+-	  buffer = (char *) realloc (use_malloc ? buffer : NULL, buflen);
+-	  if (buffer == NULL)
+-	    {
+-	      /* We ran out of memory.  We cannot do anything but
+-		 sending a negative response.  In reality this should
+-		 never happen.  */
+-	      grp = NULL;
+-	      buffer = old_buffer;
+-
+-	      /* We set the error to indicate this is (possibly) a
+-		 temporary error and that it does not mean the entry
+-		 is not available at all.  */
+-	      errval = EAGAIN;
+-	      break;
+-	    }
+-	  use_malloc = true;
+-	}
+-      else
+-	/* Allocate a new buffer on the stack.  If possible combine it
+-	   with the previously allocated buffer.  */
+-	buffer = (char *) extend_alloca (buffer, buflen, 2 * buflen);
+-    }
++    if (!scratch_buffer_grow (&tmpbuf))
++      {
++	/* We ran out of memory.  We cannot do anything but sending a
++	   negative response.  In reality this should never
++	   happen.  */
++	grp = NULL;
++	/* We set the error to indicate this is (possibly) a temporary
++	   error and that it does not mean the entry is not available
++	   at all.  */
++	errval = EAGAIN;
++	break;
++      }
+ 
+   time_t timeout = cache_addgr (db, fd, req, keystr, grp, uid, he, dh, errval);
+-
+-  if (use_malloc)
+-    free (buffer);
+-
++  scratch_buffer_free (&tmpbuf);
+   return timeout;
+ }
+ 
+ 
+ void
+Index: glibc-2.27/nscd/hstcache.c
+===================================================================
+--- glibc-2.27.orig/nscd/hstcache.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nscd/hstcache.c	2018-12-18 10:17:17.252838755 +0000
+@@ -32,10 +32,11 @@
+ #include <stdint.h>
+ #include <arpa/inet.h>
+ #include <arpa/nameser.h>
+ #include <sys/mman.h>
+ #include <stackinfo.h>
++#include <scratch_buffer.h>
+ 
+ #include "nscd.h"
+ #include "dbg_log.h"
+ #ifdef HAVE_SENDFILE
+ # include <kernel-features.h>
+@@ -461,15 +462,12 @@ addhstbyX (struct database_dyn *db, int
+ {
+   /* Search for the entry matching the key.  Please note that we don't
+      look again in the table whether the dataset is now available.  We
+      simply insert it.  It does not matter if it is in there twice.  The
+      pruning function only will look at the timestamp.  */
+-  int buflen = 1024;
+-  char *buffer = (char *) alloca (buflen);
+   struct hostent resultbuf;
+   struct hostent *hst;
+-  bool use_malloc = false;
+   int errval = 0;
+   int32_t ttl = INT32_MAX;
+ 
+   if (__glibc_unlikely (debug_level > 0))
+     {
+@@ -485,50 +483,34 @@ addhstbyX (struct database_dyn *db, int
+ 	dbg_log (_("Haven't found \"%s\" in hosts cache!"), (char *) str);
+       else
+ 	dbg_log (_("Reloading \"%s\" in hosts cache!"), (char *) str);
+     }
+ 
+-  while (lookup (req->type, key, &resultbuf, buffer, buflen, &hst, &ttl) != 0
++  struct scratch_buffer tmpbuf;
++  scratch_buffer_init (&tmpbuf);
++
++  while (lookup (req->type, key, &resultbuf,
++		 tmpbuf.data, tmpbuf.length, &hst, &ttl) != 0
+ 	 && h_errno == NETDB_INTERNAL
+ 	 && (errval = errno) == ERANGE)
+-    {
+-      errno = 0;
+-
+-      if (__glibc_unlikely (buflen > 32768))
+-	{
+-	  char *old_buffer = buffer;
+-	  buflen *= 2;
+-	  buffer = (char *) realloc (use_malloc ? buffer : NULL, buflen);
+-	  if (buffer == NULL)
+-	    {
+-	      /* We ran out of memory.  We cannot do anything but
+-		 sending a negative response.  In reality this should
+-		 never happen.  */
+-	      hst = NULL;
+-	      buffer = old_buffer;
+-
+-	      /* We set the error to indicate this is (possibly) a
+-		 temporary error and that it does not mean the entry
+-		 is not available at all.  */
+-	      h_errno = TRY_AGAIN;
+-	      errval = EAGAIN;
+-	      break;
+-	    }
+-	  use_malloc = true;
+-	}
+-      else
+-	/* Allocate a new buffer on the stack.  If possible combine it
+-	   with the previously allocated buffer.  */
+-	buffer = (char *) extend_alloca (buffer, buflen, 2 * buflen);
+-    }
++    if (!scratch_buffer_grow (&tmpbuf))
++      {
++	/* We ran out of memory.  We cannot do anything but sending a
++	   negative response.  In reality this should never
++	   happen.  */
++	hst = NULL;
++	/* We set the error to indicate this is (possibly) a temporary
++	   error and that it does not mean the entry is not
++	   available at all.  */
++	h_errno = TRY_AGAIN;
++	errval = EAGAIN;
++	break;
++      }
+ 
+   time_t timeout = cache_addhst (db, fd, req, key, hst, uid, he, dh,
+ 				 h_errno == TRY_AGAIN ? errval : 0, ttl);
+-
+-  if (use_malloc)
+-    free (buffer);
+-
++  scratch_buffer_free (&tmpbuf);
+   return timeout;
+ }
+ 
+ 
+ void
+Index: glibc-2.27/nscd/pwdcache.c
+===================================================================
+--- glibc-2.27.orig/nscd/pwdcache.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nscd/pwdcache.c	2018-12-18 10:19:32.532147531 +0000
+@@ -14,11 +14,10 @@
+    GNU General Public License for more details.
+ 
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, see <http://www.gnu.org/licenses/>.  */
+ 
+-#include <alloca.h>
+ #include <assert.h>
+ #include <errno.h>
+ #include <error.h>
+ #include <libintl.h>
+ #include <pwd.h>
+@@ -30,10 +29,11 @@
+ #include <time.h>
+ #include <unistd.h>
+ #include <sys/mman.h>
+ #include <sys/socket.h>
+ #include <stackinfo.h>
++#include <scratch_buffer.h>
+ 
+ #include "nscd.h"
+ #include "dbg_log.h"
+ #ifdef HAVE_SENDFILE
+ # include <kernel-features.h>
+@@ -424,64 +424,44 @@ addpwbyX (struct database_dyn *db, int f
+ {
+   /* Search for the entry matching the key.  Please note that we don't
+      look again in the table whether the dataset is now available.  We
+      simply insert it.  It does not matter if it is in there twice.  The
+      pruning function only will look at the timestamp.  */
+-  size_t buflen = 1024;
+-  char *buffer = (char *) alloca (buflen);
+   struct passwd resultbuf;
+   struct passwd *pwd;
+-  bool use_malloc = false;
+   int errval = 0;
++  struct scratch_buffer tmpbuf;
++  scratch_buffer_init (&tmpbuf);
+ 
+   if (__glibc_unlikely (debug_level > 0))
+     {
+       if (he == NULL)
+ 	dbg_log (_("Haven't found \"%s\" in password cache!"), keystr);
+       else
+ 	dbg_log (_("Reloading \"%s\" in password cache!"), keystr);
+     }
+ 
+-  while (lookup (req->type, key, &resultbuf, buffer, buflen, &pwd) != 0
++  while (lookup (req->type, key, &resultbuf,
++		 tmpbuf.data, tmpbuf.length, &pwd) != 0
+ 	 && (errval = errno) == ERANGE)
+-    {
+-      errno = 0;
+-
+-      if (__glibc_unlikely (buflen > 32768))
+-	{
+-	  char *old_buffer = buffer;
+-	  buflen *= 2;
+-	  buffer = (char *) realloc (use_malloc ? buffer : NULL, buflen);
+-	  if (buffer == NULL)
+-	    {
+-	      /* We ran out of memory.  We cannot do anything but
+-		 sending a negative response.  In reality this should
+-		 never happen.  */
+-	      pwd = NULL;
+-	      buffer = old_buffer;
+-
+-	      /* We set the error to indicate this is (possibly) a
+-		 temporary error and that it does not mean the entry
+-		 is not available at all.  */
+-	      errval = EAGAIN;
+-	      break;
+-	    }
+-	  use_malloc = true;
+-	}
+-      else
+-	/* Allocate a new buffer on the stack.  If possible combine it
+-	   with the previously allocated buffer.  */
+-	buffer = (char *) extend_alloca (buffer, buflen, 2 * buflen);
+-    }
++    if (!scratch_buffer_grow (&tmpbuf))
++      {
++	/* We ran out of memory.  We cannot do anything but sending a
++	   negative response.  In reality this should never
++	   happen.  */
++	pwd = NULL;
++	/* We set the error to indicate this is (possibly) a temporary
++	   error and that it does not mean the entry is not available
++	   at all.  */
++	errval = EAGAIN;
++	break;
++      }
+ 
+   /* Add the entry to the cache.  */
+   time_t timeout = cache_addpw (db, fd, req, keystr, pwd, c_uid, he, dh,
+ 				errval);
+-
+-  if (use_malloc)
+-    free (buffer);
+-
++  scratch_buffer_free (&tmpbuf);
+   return timeout;
+ }
+ 
+ 
+ void
+Index: glibc-2.27/nscd/servicescache.c
+===================================================================
+--- glibc-2.27.orig/nscd/servicescache.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nscd/servicescache.c	2018-12-18 10:17:17.256838705 +0000
+@@ -14,19 +14,19 @@
+    GNU General Public License for more details.
+ 
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, see <http://www.gnu.org/licenses/>.  */
+ 
+-#include <alloca.h>
+ #include <assert.h>
+ #include <errno.h>
+ #include <libintl.h>
+ #include <netdb.h>
+ #include <unistd.h>
+ #include <stdint.h>
+ #include <sys/mman.h>
+ #include <kernel-features.h>
++#include <scratch_buffer.h>
+ 
+ #include "nscd.h"
+ #include "dbg_log.h"
+ 
+ 
+@@ -372,62 +372,42 @@ addservbyX (struct database_dyn *db, int
+ {
+   /* Search for the entry matching the key.  Please note that we don't
+      look again in the table whether the dataset is now available.  We
+      simply insert it.  It does not matter if it is in there twice.  The
+      pruning function only will look at the timestamp.  */
+-  size_t buflen = 1024;
+-  char *buffer = (char *) alloca (buflen);
+   struct servent resultbuf;
+   struct servent *serv;
+-  bool use_malloc = false;
+   int errval = 0;
++  struct scratch_buffer tmpbuf;
++  scratch_buffer_init (&tmpbuf);
+ 
+   if (__glibc_unlikely (debug_level > 0))
+     {
+       if (he == NULL)
+ 	dbg_log (_("Haven't found \"%s\" in services cache!"), key);
+       else
+ 	dbg_log (_("Reloading \"%s\" in services cache!"), key);
+     }
+ 
+-  while (lookup (req->type, key, &resultbuf, buffer, buflen, &serv) != 0
++  while (lookup (req->type, key, &resultbuf,
++		 tmpbuf.data, tmpbuf.length, &serv) != 0
+ 	 && (errval = errno) == ERANGE)
+-    {
+-      errno = 0;
+-
+-      if (__glibc_unlikely (buflen > 32768))
+-	{
+-	  char *old_buffer = buffer;
+-	  buflen *= 2;
+-	  buffer = (char *) realloc (use_malloc ? buffer : NULL, buflen);
+-	  if (buffer == NULL)
+-	    {
+-	      /* We ran out of memory.  We cannot do anything but
+-		 sending a negative response.  In reality this should
+-		 never happen.  */
+-	      serv = NULL;
+-	      buffer = old_buffer;
+-
+-	      /* We set the error to indicate this is (possibly) a
+-		 temporary error and that it does not mean the entry
+-		 is not available at all.  */
+-	      errval = EAGAIN;
+-	      break;
+-	    }
+-	  use_malloc = true;
+-	}
+-      else
+-	/* Allocate a new buffer on the stack.  If possible combine it
+-	   with the previously allocated buffer.  */
+-	buffer = (char *) extend_alloca (buffer, buflen, 2 * buflen);
+-    }
++    if (!scratch_buffer_grow (&tmpbuf))
++      {
++	/* We ran out of memory.  We cannot do anything but sending a
++	   negative response.  In reality this should never
++	   happen.  */
++	serv = NULL;
++	/* We set the error to indicate this is (possibly) a temporary
++	   error and that it does not mean the entry is not available
++	   at all.  */
++	errval = EAGAIN;
++	break;
++      }
+ 
+   time_t timeout = cache_addserv (db, fd, req, key, serv, uid, he, dh, errval);
+-
+-  if (use_malloc)
+-    free (buffer);
+-
++  scratch_buffer_free (&tmpbuf);
+   return timeout;
+ }
+ 
+ 
+ void
+Index: glibc-2.27/nss/getent.c
+===================================================================
+--- glibc-2.27.orig/nss/getent.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nss/getent.c	2018-12-18 10:17:17.257838693 +0000
+@@ -37,10 +37,11 @@
+ #include <arpa/inet.h>
+ #include <arpa/nameser.h>
+ #include <netinet/ether.h>
+ #include <netinet/in.h>
+ #include <sys/socket.h>
++#include <scratch_buffer.h>
+ 
+ /* Get libc version number.  */
+ #include <version.h>
+ 
+ #define PACKAGE _libc_intl_domainname
+@@ -475,41 +476,47 @@ netgroup_keys (int number, char *key[])
+ 
+ /* This is for initgroups */
+ static int
+ initgroups_keys (int number, char *key[])
+ {
+-  int ngrps = 100;
+-  size_t grpslen = ngrps * sizeof (gid_t);
+-  gid_t *grps = alloca (grpslen);
+-
+   if (number == 0)
+     {
+       fprintf (stderr, _("Enumeration not supported on %s\n"), "initgroups");
+       return 3;
+     }
+ 
++  struct scratch_buffer tmpbuf;
++  scratch_buffer_init (&tmpbuf);
++
+   for (int i = 0; i < number; ++i)
+     {
++      ssize_t ngrps = tmpbuf.length / sizeof (gid_t);
+       int no = ngrps;
+       int n;
+-      while ((n = getgrouplist (key[i], -1, grps, &no)) == -1
++      while ((n = getgrouplist (key[i], -1, tmpbuf.data, &no)) == -1
+ 	     && no > ngrps)
+ 	{
+-	  grps = extend_alloca (grps, grpslen, no * sizeof (gid_t));
+-	  ngrps = no;
++	  if (!scratch_buffer_set_array_size (&tmpbuf, no, sizeof (gid_t)))
++	    {
++	      fprintf (stderr, _("Could not allocate group list: %m\n"));
++	      return 3;
++	    }
+ 	}
+ 
+       if (n == -1)
+ 	return 1;
+ 
++      const gid_t *grps = tmpbuf.data;
+       printf ("%-21s", key[i]);
+       for (int j = 0; j < n; ++j)
+ 	if (grps[j] != -1)
+ 	  printf (" %ld", (long int) grps[j]);
+       putchar_unlocked ('\n');
+     }
+ 
++  scratch_buffer_free (&tmpbuf);
++
+   return 0;
+ }
+ 
+ /* This is for networks */
+ static void
+Index: glibc-2.27/nss/nss_compat/compat-initgroups.c
+===================================================================
+--- glibc-2.27.orig/nss/nss_compat/compat-initgroups.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nss/nss_compat/compat-initgroups.c	2018-12-18 10:17:17.261838643 +0000
+@@ -259,42 +259,38 @@ getgrent_next_nss (ent_t *ent, char *buf
+ 	      /* A temporary buffer. We use the normal buffer, until we find
+ 		 an entry, for which this buffer is to small.  In this case, we
+ 		 overwrite the pointer with one to a bigger buffer.  */
+ 	      char *tmpbuf = buffer;
+ 	      size_t tmplen = buflen;
+-	      bool use_malloc = false;
+ 
+ 	      for (int i = 0; i < mystart; i++)
+ 		{
+ 		  while ((status = nss_getgrgid_r (mygroups[i], &grpbuf,
+ 						   tmpbuf, tmplen, errnop))
+ 			 == NSS_STATUS_TRYAGAIN
+ 			 && *errnop == ERANGE)
+                     {
+-                      if (__libc_use_alloca (tmplen * 2))
+-                        {
+-                          if (tmpbuf == buffer)
+-                            {
+-                              tmplen *= 2;
+-                              tmpbuf = __alloca (tmplen);
+-                            }
+-                          else
+-                            tmpbuf = extend_alloca (tmpbuf, tmplen, tmplen * 2);
+-                        }
+-                      else
+-                        {
+-                          tmplen *= 2;
+-                          char *newbuf = realloc (use_malloc ? tmpbuf : NULL, tmplen);
+-
+-                          if (newbuf == NULL)
+-                            {
+-                              status = NSS_STATUS_TRYAGAIN;
+-			      goto done;
+-                            }
+-                          use_malloc = true;
+-                          tmpbuf = newbuf;
+-                        }
++		      /* Check for overflow. */
++		      if (__glibc_unlikely (tmplen * 2 < tmplen))
++			{
++			  __set_errno (ENOMEM);
++			  status = NSS_STATUS_TRYAGAIN;
++			  goto done;
++			}
++		      /* Increase the size.  Make sure that we retry
++			 with a reasonable size.  */
++		      tmplen *= 2;
++		      if (tmplen < 1024)
++			tmplen = 1024;
++		      if (tmpbuf != buffer)
++			free (tmpbuf);
++		      tmpbuf = malloc (tmplen);
++		      if (__glibc_unlikely (tmpbuf == NULL))
++			{
++			  status = NSS_STATUS_TRYAGAIN;
++			  goto done;
++			}
+                     }
+ 
+ 		  if (__builtin_expect  (status != NSS_STATUS_NOTFOUND, 1))
+ 		    {
+ 		      if (__builtin_expect  (status != NSS_STATUS_SUCCESS, 0))
+@@ -318,11 +314,11 @@ getgrent_next_nss (ent_t *ent, char *buf
+ 		}
+ 
+ 	      status = NSS_STATUS_NOTFOUND;
+ 
+  done:
+-	      if (use_malloc)
++	      if (tmpbuf != buffer)
+ 	        free (tmpbuf);
+ 	    }
+ 
+ 	  free (mygroups);
+ 
+Index: glibc-2.27/nss/nss_files/files-initgroups.c
+===================================================================
+--- glibc-2.27.orig/nss/nss_files/files-initgroups.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nss/nss_files/files-initgroups.c	2018-12-18 10:17:17.264838605 +0000
+@@ -14,19 +14,19 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#include <alloca.h>
+ #include <errno.h>
+ #include <grp.h>
+ #include <nss.h>
+ #include <stdio_ext.h>
+ #include <string.h>
+ #include <sys/param.h>
+ #include <stdbool.h>
+ #include <stdlib.h>
++#include <scratch_buffer.h>
+ 
+ enum nss_status
+ _nss_files_initgroups_dyn (const char *user, gid_t group, long int *start,
+ 			   long int *size, gid_t **groupsp, long int limit,
+ 			   int *errnop)
+@@ -44,13 +44,12 @@ _nss_files_initgroups_dyn (const char *u
+   char *line = NULL;
+   size_t linelen = 0;
+   enum nss_status status = NSS_STATUS_SUCCESS;
+   bool any = false;
+ 
+-  size_t buflen = 1024;
+-  void *buffer = alloca (buflen);
+-  bool buffer_use_malloc = false;
++  struct scratch_buffer tmpbuf;
++  scratch_buffer_init (&tmpbuf);
+ 
+   gid_t *groups = *groupsp;
+ 
+   /* We have to iterate over the entire file.  */
+   while (1)
+@@ -65,30 +64,20 @@ _nss_files_initgroups_dyn (const char *u
+ 		      ? NSS_STATUS_TRYAGAIN : NSS_STATUS_UNAVAIL);
+ 	  break;
+ 	}
+ 
+       struct group grp;
+-      int res = _nss_files_parse_grent (line, &grp, buffer, buflen, errnop);
++      int res = _nss_files_parse_grent (line, &grp,
++					tmpbuf.data, tmpbuf.length, errnop);
+       if (res == -1)
+ 	{
+-	  size_t newbuflen = 2 * buflen;
+-	  if (buffer_use_malloc || ! __libc_use_alloca (buflen + newbuflen))
++	  if (!scratch_buffer_grow (&tmpbuf))
+ 	    {
+-	      void *newbuf = realloc (buffer_use_malloc ? buffer : NULL,
+-				      newbuflen);
+-	      if (newbuf == NULL)
+-		{
+-		  *errnop = ENOMEM;
+-		  status = NSS_STATUS_TRYAGAIN;
+-		  goto out;
+-		}
+-	      buffer = newbuf;
+-	      buflen = newbuflen;
+-	      buffer_use_malloc = true;
++	      *errnop = ENOMEM;
++	      status = NSS_STATUS_TRYAGAIN;
++	      goto out;
+ 	    }
+-	  else
+-	    buffer = extend_alloca (buffer, buflen, newbuflen);
+ 	  /* Reread current line, the parser has clobbered it.  */
+ 	  fsetpos (stream, &pos);
+ 	  continue;
+ 	}
+ 
+@@ -130,12 +119,11 @@ _nss_files_initgroups_dyn (const char *u
+ 	    }
+     }
+ 
+  out:
+   /* Free memory.  */
+-  if (buffer_use_malloc)
+-    free (buffer);
++  scratch_buffer_free (&tmpbuf);
+   free (line);
+ 
+   fclose (stream);
+ 
+   return status == NSS_STATUS_SUCCESS && !any ? NSS_STATUS_NOTFOUND : status;
+Index: glibc-2.27/posix/wordexp.c
+===================================================================
+--- glibc-2.27.orig/posix/wordexp.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/posix/wordexp.c	2018-12-18 10:17:17.268838555 +0000
+@@ -15,11 +15,10 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#include <alloca.h>
+ #include <ctype.h>
+ #include <errno.h>
+ #include <fcntl.h>
+ #include <fnmatch.h>
+ #include <glob.h>
+@@ -39,10 +38,11 @@
+ #include <sys/wait.h>
+ #include <unistd.h>
+ #include <wchar.h>
+ #include <wordexp.h>
+ #include <kernel-features.h>
++#include <scratch_buffer.h>
+ 
+ #include <libc-lock.h>
+ #include <_itoa.h>
+ 
+ /* Undefine the following line for the production version.  */
+@@ -297,16 +297,11 @@ parse_tilde (char **word, size_t *word_l
+     }
+ 
+   if (i == 1 + *offset)
+     {
+       /* Tilde appears on its own */
+-      uid_t uid;
+-      struct passwd pwd, *tpwd;
+-      int buflen = 1000;
+       char* home;
+-      char* buffer;
+-      int result;
+ 
+       /* POSIX.2 says ~ expands to $HOME and if HOME is unset the
+ 	 results are unspecified.  We do a lookup on the uid if
+ 	 HOME is unset. */
+ 
+@@ -317,43 +312,58 @@ parse_tilde (char **word, size_t *word_l
+ 	  if (*word == NULL)
+ 	    return WRDE_NOSPACE;
+ 	}
+       else
+ 	{
+-	  uid = __getuid ();
+-	  buffer = __alloca (buflen);
+-
+-	  while ((result = __getpwuid_r (uid, &pwd, buffer, buflen, &tpwd)) != 0
++	  struct passwd pwd, *tpwd;
++	  uid_t uid = __getuid ();
++	  int result;
++	  struct scratch_buffer tmpbuf;
++	  scratch_buffer_init (&tmpbuf);
++
++	  while ((result = __getpwuid_r (uid, &pwd,
++					 tmpbuf.data, tmpbuf.length,
++					 &tpwd)) != 0
+ 		 && errno == ERANGE)
+-	    buffer = extend_alloca (buffer, buflen, buflen + 1000);
++	    if (!scratch_buffer_grow (&tmpbuf))
++	      return WRDE_NOSPACE;
+ 
+ 	  if (result == 0 && tpwd != NULL && pwd.pw_dir != NULL)
+ 	    {
+ 	      *word = w_addstr (*word, word_length, max_length, pwd.pw_dir);
+ 	      if (*word == NULL)
+-		return WRDE_NOSPACE;
++		{
++		  scratch_buffer_free (&tmpbuf);
++		  return WRDE_NOSPACE;
++		}
+ 	    }
+ 	  else
+ 	    {
+ 	      *word = w_addchar (*word, word_length, max_length, '~');
+ 	      if (*word == NULL)
+-		return WRDE_NOSPACE;
++		{
++		  scratch_buffer_free (&tmpbuf);
++		  return WRDE_NOSPACE;
++		}
+ 	    }
++	  scratch_buffer_free (&tmpbuf);
+ 	}
+     }
+   else
+     {
+       /* Look up user name in database to get home directory */
+       char *user = strndupa (&words[1 + *offset], i - (1 + *offset));
+       struct passwd pwd, *tpwd;
+-      int buflen = 1000;
+-      char* buffer = __alloca (buflen);
+       int result;
++      struct scratch_buffer tmpbuf;
++      scratch_buffer_init (&tmpbuf);
+ 
+-      while ((result = __getpwnam_r (user, &pwd, buffer, buflen, &tpwd)) != 0
++      while ((result = __getpwnam_r (user, &pwd, tmpbuf.data, tmpbuf.length,
++				     &tpwd)) != 0
+ 	     && errno == ERANGE)
+-	buffer = extend_alloca (buffer, buflen, buflen + 1000);
++	if (!scratch_buffer_grow (&tmpbuf))
++	  return WRDE_NOSPACE;
+ 
+       if (result == 0 && tpwd != NULL && pwd.pw_dir)
+ 	*word = w_addstr (*word, word_length, max_length, pwd.pw_dir);
+       else
+ 	{
+@@ -361,10 +371,12 @@ parse_tilde (char **word, size_t *word_l
+ 	  *word = w_addchar (*word, word_length, max_length, '~');
+ 	  if (*word != NULL)
+ 	    *word = w_addstr (*word, word_length, max_length, user);
+ 	}
+ 
++      scratch_buffer_free (&tmpbuf);
++
+       *offset = i - 1;
+     }
+   return *word ? 0 : WRDE_NOSPACE;
+ }
+ 
+Index: glibc-2.27/sysdeps/unix/sysv/linux/gethostid.c
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/sysv/linux/gethostid.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/sysdeps/unix/sysv/linux/gethostid.c	2018-12-18 10:17:17.270838530 +0000
+@@ -61,17 +61,16 @@ sethostid (long int id)
+ #else
+ # include <string.h>
+ # include <sys/param.h>
+ # include <resolv/netdb.h>
+ # include <netinet/in.h>
++# include <scratch_buffer.h>
+ 
+ long int
+ gethostid (void)
+ {
+   char hostname[MAXHOSTNAMELEN + 1];
+-  size_t buflen;
+-  char *buffer;
+   struct hostent hostbuf, *hp;
+   int32_t id;
+   struct in_addr in;
+   int herr;
+   int fd;
+@@ -92,27 +91,30 @@ gethostid (void)
+      a unique number of a host is its IP address.  Return this.  */
+   if (__gethostname (hostname, MAXHOSTNAMELEN) < 0 || hostname[0] == '\0')
+     /* This also fails.  Return and arbitrary value.  */
+     return 0;
+ 
+-  buflen = 1024;
+-  buffer = __alloca (buflen);
++  struct scratch_buffer tmpbuf;
++  scratch_buffer_init (&tmpbuf);
+ 
+   /* To get the IP address we need to know the host name.  */
+-  while (__gethostbyname_r (hostname, &hostbuf, buffer, buflen, &hp, &herr)
+-	 != 0
++  while (__gethostbyname_r (hostname, &hostbuf,
++			    tmpbuf.data, tmpbuf.length, &hp, &herr) != 0
+ 	 || hp == NULL)
+     if (herr != NETDB_INTERNAL || errno != ERANGE)
+-      return 0;
++      {
++	scratch_buffer_free (&tmpbuf);
++	return 0;
++      }
+     else
+-      /* Enlarge buffer.  */
+-      buffer = extend_alloca (buffer, buflen, 2 * buflen);
++      if (!scratch_buffer_grow (&tmpbuf))
++	return 0;
+ 
+   in.s_addr = 0;
+   memcpy (&in, hp->h_addr,
+ 	  (int) sizeof (in) < hp->h_length ? (int) sizeof (in) : hp->h_length);
+-
++  scratch_buffer_free (&tmpbuf);
+   /* For the return value to be not exactly the IP address we do some
+      bit fiddling.  */
+   return (int32_t) (in.s_addr << 16 | in.s_addr >> 16);
+ }
+ #endif
+Index: glibc-2.27/sysdeps/unix/sysv/linux/getlogin_r.c
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/sysv/linux/getlogin_r.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/sysdeps/unix/sysv/linux/getlogin_r.c	2018-12-18 10:17:17.277838443 +0000
+@@ -16,10 +16,11 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ #include <pwd.h>
+ #include <unistd.h>
+ #include <not-cancel.h>
++#include <scratch_buffer.h>
+ 
+ #define STATIC static
+ static int getlogin_r_fd0 (char *name, size_t namesize);
+ #define __getlogin_r getlogin_r_fd0
+ #include <sysdeps/unix/getlogin_r.c>
+@@ -52,32 +53,23 @@ __getlogin_r_loginuid (char *name, size_
+       || (uidbuf[n] = '\0',
+ 	  uid = strtoul (uidbuf, &endp, 10),
+ 	  endp == uidbuf || *endp != '\0'))
+     return -1;
+ 
+-  size_t buflen = 1024;
+-  char *buf = alloca (buflen);
+-  bool use_malloc = false;
+   struct passwd pwd;
+   struct passwd *tpwd;
+   int result = 0;
+   int res;
++  struct scratch_buffer tmpbuf;
++  scratch_buffer_init (&tmpbuf);
+ 
+-  while ((res = __getpwuid_r (uid, &pwd, buf, buflen, &tpwd)) == ERANGE)
+-    if (__libc_use_alloca (2 * buflen))
+-      buf = extend_alloca (buf, buflen, 2 * buflen);
+-    else
++  while ((res = __getpwuid_r (uid, &pwd,
++			      tmpbuf.data, tmpbuf.length, &tpwd)) == ERANGE)
++    if (!scratch_buffer_grow (&tmpbuf))
+       {
+-	buflen *= 2;
+-	char *newp = realloc (use_malloc ? buf : NULL, buflen);
+-	if (newp == NULL)
+-	  {
+-	    result = ENOMEM;
+-	    goto out;
+-	  }
+-	buf = newp;
+-	use_malloc = true;
++	result = ENOMEM;
++	goto out;
+       }
+ 
+   if (res != 0 || tpwd == NULL)
+     {
+       result = -1;
+@@ -93,13 +85,11 @@ __getlogin_r_loginuid (char *name, size_
+     }
+ 
+   memcpy (name, pwd.pw_name, needed);
+ 
+  out:
+-  if (use_malloc)
+-    free (buf);
+-
++  scratch_buffer_free (&tmpbuf);
+   return result;
+ }
+ 
+ 
+ /* Return at most NAME_LEN characters of the login name of the user in NAME.

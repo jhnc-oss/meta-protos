@@ -1,0 +1,7 @@
+Index: glibc-2.27/sysdeps/unix/confstr.h
+===================================================================
+--- glibc-2.27.orig/sysdeps/unix/confstr.h	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/sysdeps/unix/confstr.h	2018-12-18 10:16:27.391462108 +0000
+@@ -1 +1 @@
+-#define	CS_PATH	"/bin:/usr/bin"
++#define	CS_PATH	"/usr/bin"

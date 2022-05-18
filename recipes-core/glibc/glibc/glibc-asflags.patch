@@ -1,0 +1,29 @@
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Wed Jul 4 16:16:57 2018 +0200
+
+    Makeconfig (ASFLAGS): Always append required assembler flags.
+
+Submitted upstream here:
+
+  https://sourceware.org/ml/libc-alpha/2018-07/msg00077.html
+
+Otherwise, we lose essential flags such as -Wa,--noexecstack due to
+the way += works in make due to the ASFLAGS command line override.
+
+Index: glibc-2.27/Makeconfig
+===================================================================
+--- glibc-2.27.orig/Makeconfig	2018-12-18 10:18:43.835756320 +0000
++++ glibc-2.27/Makeconfig	2018-12-18 10:18:45.917730292 +0000
+@@ -1041,11 +1041,11 @@ endif
+ 
+ # The assembler can generate debug information too.
+ ifndef ASFLAGS
+ ASFLAGS := $(filter -g% -fdebug-prefix-map=%,$(CFLAGS))
+ endif
+-ASFLAGS += -Werror=undef $(ASFLAGS-config) $(asflags-cpu)
++override ASFLAGS += -Werror=undef $(ASFLAGS-config) $(asflags-cpu)
+ 
+ ifndef BUILD_CC
+ BUILD_CC = $(CC)
+ endif
+ 

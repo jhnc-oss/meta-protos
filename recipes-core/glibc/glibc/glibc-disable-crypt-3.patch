@@ -1,0 +1,1296 @@
+commit 841785bad14dfad81a0af94900310141c59f26a4
+Author: Zack Weinberg <zackw@panix.com>
+Date:   Fri Jun 29 16:53:37 2018 +0200
+
+    manual: Revise crypt.texi.
+    
+    This is a major rewrite of the description of 'crypt', 'getentropy',
+    and 'getrandom'.
+    
+    A few highlights of the content changes:
+    
+     - Throughout the manual, public headers, and user-visible messages,
+       I replaced the term "password" with "passphrase", the term
+       "password database" with "user database", and the term
+       "encrypt(ion)" with "(one-way) hashing" whenever it was applied to
+       passphrases.  I didn't bother making this change in internal code
+       or tests.  The use of the term "password" in ruserpass.c survives,
+       because that refers to a keyword in netrc files, but it is adjusted
+       to make this clearer.
+    
+       There is a note in crypt.texi explaining that they were
+       traditionally called passwords but single words are not good enough
+       anymore, and a note in users.texi explaining that actual passphrase
+       hashes are found in a "shadow" database nowadays.
+    
+     - There is a new short introduction to the "Cryptographic Functions"
+       section, explaining how we do not intend to be a general-purpose
+       cryptography library, and cautioning that there _are_, or have
+       been, legal restrictions on the use of cryptography in many
+       countries, without getting into any kind of detail that we can't
+       promise to keep up to date.
+    
+     - I added more detail about what a "one-way function" is, and why
+       they are used to obscure passphrases for storage.  I removed the
+       paragraph saying that systems not connected to a network need no
+       user authentication, because that's a pretty rare situation
+       nowadays.  (It still says "sometimes it is necessary" to
+       authenticate the user, though.)
+    
+     - I added documentation for all of the hash functions that glibc
+       actually supports, but not for the additional hash functions
+       supported by libxcrypt.  If we're going to keep this manual section
+       around after the transition is more advanced, it would probably
+       make sense to add them then.
+    
+     - There is much more detailed discussion of how to generate a salt,
+       and the failure behavior for crypt is documented.  (Returning an
+       invalid hash on failure is what libxcrypt does; Solar Designer's
+       notes say that this was done "for compatibility with old programs
+       that assume crypt can never fail".)
+    
+     - As far as I can tell, the header 'crypt.h' is entirely a GNU
+       invention, and never existed on any other Unix lineage.  The
+       function 'crypt', however, was in Issue 1 of the SVID and is now
+       in the XSI component of POSIX.  I tried to make all of the
+       @standards annotations consistent with this, but I'm not sure I got
+       them perfectly right.
+    
+     - The genpass.c example has been improved to use getentropy instead
+       of the current time to generate the salt, and to use a SHA-256 hash
+       instead of MD5. It uses more random bytes than is strictly
+       necessary because I didn't want to complicate the code with proper
+       base64 encoding.
+    
+     - The testpass.c example has three hardwired hashes now, to
+       demonstrate that different one-way functions produce different
+       hashes for the same input.  It also demonstrates how DES hashing
+       only pays attention to the first eight characters of the input.
+    
+     - There is new text explaining in more detail how a CSPRNG differs
+       from a regular random number generator, and how
+       getentropy/getrandom are not exactly a CSPRNG.  I tried not to make
+       specific falsifiable claims here.  I also tried to make the
+       blocking/cancellation/error behavior of both getentropy and
+       getrandom clearer.
+
+Index: glibc-2.27/crypt/crypt.h
+===================================================================
+--- glibc-2.27.orig/crypt/crypt.h	2018-12-18 10:18:23.454011127 +0000
++++ glibc-2.27/crypt/crypt.h	2018-12-18 10:18:26.058978560 +0000
+@@ -26,17 +26,22 @@
+ 
+ #include <features.h>
+ 
+ __BEGIN_DECLS
+ 
+-/* Encrypt at most 8 characters from KEY using salt to perturb DES.  */
+-extern char *crypt (const char *__key, const char *__salt)
++/* One-way hash PHRASE, returning a string suitable for storage in the
++   user database.  SALT selects the one-way function to use, and
++   ensures that no two users' hashes are the same, even if they use
++   the same passphrase.  The return value points to static storage
++   which will be overwritten by the next call to crypt.  */
++extern char *crypt (const char *__phrase, const char *__salt)
+      __THROW __nonnull ((1, 2));
+ 
+ #ifdef __USE_GNU
+-/* Reentrant version of 'crypt'.  The additional argument
+-   points to a structure where the results are placed in.  */
++
++/* This structure provides scratch and output buffers for 'crypt_r'.
++   Its contents should not be accessed directly.  */
+ struct crypt_data
+   {
+     char keysched[16 * 8];
+     char sb0[32768];
+     char sb1[32768];
+@@ -47,11 +52,17 @@ struct crypt_data
+     char current_salt[2];
+     long int current_saltbits;
+     int  direction, initialized;
+   };
+ 
+-extern char *crypt_r (const char *__key, const char *__salt,
++/* Thread-safe version of 'crypt'.
++   DATA must point to a 'struct crypt_data' allocated by the caller.
++   Before the first call to 'crypt_r' with a new 'struct crypt_data',
++   that object must be initialized to all zeroes.  The pointer
++   returned, if not NULL, will point within DATA.  (It will still be
++   overwritten by the next call to 'crypt_r' with the same DATA.)  */
++extern char *crypt_r (const char *__phrase, const char *__salt,
+ 		      struct crypt_data * __restrict __data)
+      __THROW __nonnull ((1, 2, 3));
+ #endif
+ 
+ __END_DECLS
+Index: glibc-2.27/inet/ruserpass.c
+===================================================================
+--- glibc-2.27.orig/inet/ruserpass.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/inet/ruserpass.c	2018-12-18 10:18:26.063978498 +0000
+@@ -175,11 +175,11 @@ next:
+ 		case PASSWD:
+ 			if (strcmp(*aname, "anonymous") &&
+ 			    fstat64(fileno(cfile), &stb) >= 0 &&
+ 			    (stb.st_mode & 077) != 0) {
+ 	warnx(_("Error: .netrc file is readable by others."));
+-	warnx(_("Remove password or make file unreadable by others."));
++	warnx(_("Remove 'password' line or make file unreadable by others."));
+ 				goto bad;
+ 			}
+ 			if (token() && *apass == 0) {
+ 				char *newp;
+ 				newp = malloc((unsigned) strlen(tokval) + 1);
+Index: glibc-2.27/manual/contrib.texi
+===================================================================
+--- glibc-2.27.orig/manual/contrib.texi	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/manual/contrib.texi	2018-12-18 10:18:26.067978448 +0000
+@@ -127,11 +127,11 @@ testing and bug fixing.
+ @item
+ Martin Galvan for contributing gdb pretty printer support to glibc and adding
+ an initial set of pretty printers for structures in the POSIX Threads library.
+ 
+ @item
+-Michael Glad for the DES encryption function @code{crypt} and related
++Michael Glad for the passphrase-hashing function @code{crypt} and related
+ functions.
+ 
+ @item
+ Wolfram Gloger for contributing the memory allocation functions
+ functions @code{malloc}, @code{realloc} and @code{free} and related
+Index: glibc-2.27/manual/crypt.texi
+===================================================================
+--- glibc-2.27.orig/manual/crypt.texi	2018-12-18 10:18:24.860993537 +0000
++++ glibc-2.27/manual/crypt.texi	2018-12-18 10:18:26.070978410 +0000
+@@ -1,217 +1,324 @@
+ @node Cryptographic Functions, Debugging Support, System Configuration, Top
+ @chapter Cryptographic Functions
+-@c %MENU% Password storage and strongly unpredictable bytes
++@c %MENU% Passphrase storage and strongly unpredictable bytes.
++
++@Theglibc{} includes only a few special-purpose cryptographic
++functions: one-way hash functions for passphrase storage, and access
++to a cryptographic randomness source, if one is provided by the
++operating system.  Programs that need general-purpose cryptography
++should use a dedicated cryptography library, such as
++@uref{https://www.gnu.org/software/libgcrypt/,,libgcrypt}.
++
++Many countries place legal restrictions on the import, export,
++possession, or use of cryptographic software.  We deplore these
++restrictions, but we must still warn you that @theglibc{} may be
++subject to them, even if you do not use the functions in this chapter
++yourself.  The restrictions vary from place to place and are changed
++often, so we cannot give any more specific advice than this warning.
+ 
+ @menu
+-* crypt::                       A one-way function for passwords.
+-* Unpredictable Bytes::         Randomness for cryptography purposes.
++* Passphrase Storage::          One-way hashing for passphrases.
++* Unpredictable Bytes::         Randomness for cryptographic purposes.
+ @end menu
+ 
+-@node crypt
+-@section Encrypting Passwords
+-
+-On many systems, it is unnecessary to have any kind of user
+-authentication; for instance, a workstation which is not connected to a
+-network probably does not need any user authentication, because to use
+-the machine an intruder must have physical access.
++@node Passphrase Storage
++@section Passphrase Storage
++@cindex passphrase hashing
++@cindex one-way hashing
++@cindex hashing, passphrase
+ 
+-Sometimes, however, it is necessary to be sure that a user is authorized
++Sometimes it is necessary to be sure that a user is authorized
+ to use some service a machine provides---for instance, to log in as a
+ particular user id (@pxref{Users and Groups}).  One traditional way of
+-doing this is for each user to choose a secret @dfn{password}; then, the
+-system can ask someone claiming to be a user what the user's password
+-is, and if the person gives the correct password then the system can
+-grant the appropriate privileges.
+-
+-If all the passwords are just stored in a file somewhere, then this file
+-has to be very carefully protected.  To avoid this, passwords are run
+-through a @dfn{one-way function}, a function which makes it difficult to
+-work out what its input was by looking at its output, before storing in
+-the file.
+-
+-@Theglibc{} provides a one-way function that is compatible with
+-the behavior of the @code{crypt} function introduced in FreeBSD 2.0.
+-It supports two one-way algorithms: one based on the MD5
+-message-digest algorithm that is compatible with modern BSD systems,
+-and the other based on the Data Encryption Standard (DES) that is
+-compatible with Unix systems.
+-
+-@deftypefun {char *} crypt (const char *@var{key}, const char *@var{salt})
+-@standards{BSD, crypt.h}
+-@standards{SVID, crypt.h}
++doing this is for each user to choose a secret @dfn{passphrase}; then, the
++system can ask someone claiming to be a user what the user's passphrase
++is, and if the person gives the correct passphrase then the system can
++grant the appropriate privileges.  (Traditionally, these were called
++``passwords,'' but nowadays a single word is too easy to guess.)
++
++Programs that handle passphrases must take special care not to reveal
++them to anyone, no matter what.  It is not enough to keep them in a
++file that is only accessible with special privileges.  The file might
++be ``leaked'' via a bug or misconfiguration, and system administrators
++shouldn't learn everyone's passphrase even if they have to edit that
++file for some reason.  To avoid this, passphrases should also be
++converted into @dfn{one-way hashes}, using a @dfn{one-way function},
++before they are stored.
++
++A one-way function is easy to compute, but there is no known way to
++compute its inverse.  This means the system can easily check
++passphrases, by hashing them and comparing the result with the stored
++hash.  But an attacker who discovers someone's passphrase hash can
++only discover the passphrase it corresponds to by guessing and
++checking.  The one-way functions are designed to make this process
++impractically slow, for all but the most obvious guesses.  (Do not use
++a word from the dictionary as your passphrase.)
++
++@Theglibc{} provides an interface to four one-way functions, based on
++the SHA-2-512, SHA-2-256, MD5, and DES cryptographic primitives.  New
++passphrases should be hashed with either of the SHA-based functions.
++The others are too weak for newly set passphrases, but we continue to
++support them for verifying old passphrases.  The DES-based hash is
++especially weak, because it ignores all but the first eight characters
++of its input.
++
++@deftypefun {char *} crypt (const char *@var{phrase}, const char *@var{salt})
++@standards{X/Open, unistd.h}
++@standards{GNU, crypt.h}
+ @safety{@prelim{}@mtunsafe{@mtasurace{:crypt}}@asunsafe{@asucorrupt{} @asulock{} @ascuheap{} @ascudlopen{}}@acunsafe{@aculock{} @acsmem{}}}
+ @c Besides the obvious problem of returning a pointer into static
+ @c storage, the DES initializer takes an internal lock with the usual
+-@c set of problems for AS- and AC-Safety.  The FIPS mode checker and the
+-@c NSS implementations of may leak file descriptors if canceled.  The
++@c set of problems for AS- and AC-Safety.
++@c The NSS implementations may leak file descriptors if cancelled.
+ @c The MD5, SHA256 and SHA512 implementations will malloc on long keys,
+ @c and NSS relies on dlopening, which brings about another can of worms.
+ 
+-The @code{crypt} function takes a password, @var{key}, as a string, and
+-a @var{salt} character array which is described below, and returns a
+-printable ASCII string which starts with another salt.  It is believed
+-that, given the output of the function, the best way to find a @var{key}
+-that will produce that output is to guess values of @var{key} until the
+-original value of @var{key} is found.
+-
+-The @var{salt} parameter does two things.  Firstly, it selects which
+-algorithm is used, the MD5-based one or the DES-based one.  Secondly, it
+-makes life harder for someone trying to guess passwords against a file
+-containing many passwords; without a @var{salt}, an intruder can make a
+-guess, run @code{crypt} on it once, and compare the result with all the
+-passwords.  With a @var{salt}, the intruder must run @code{crypt} once
+-for each different salt.
+-
+-For the MD5-based algorithm, the @var{salt} should consist of the string
+-@code{$1$}, followed by up to 8 characters, terminated by either
+-another @code{$} or the end of the string.  The result of @code{crypt}
+-will be the @var{salt}, followed by a @code{$} if the salt didn't end
+-with one, followed by 22 characters from the alphabet
+-@code{./0-9A-Za-z}, up to 34 characters total.  Every character in the
+-@var{key} is significant.
+-
+-For the DES-based algorithm, the @var{salt} should consist of two
+-characters from the alphabet @code{./0-9A-Za-z}, and the result of
+-@code{crypt} will be those two characters followed by 11 more from the
+-same alphabet, 13 in total.  Only the first 8 characters in the
+-@var{key} are significant.
+-
+-The MD5-based algorithm has no limit on the useful length of the
+-password used, and is slightly more secure.  It is therefore preferred
+-over the DES-based algorithm.
+-
+-When the user enters their password for the first time, the @var{salt}
+-should be set to a new string which is reasonably random.  To verify a
+-password against the result of a previous call to @code{crypt}, pass
+-the result of the previous call as the @var{salt}.
++The function @code{crypt} converts a passphrase string, @var{phrase},
++into a one-way hash suitable for storage in the user database.  The
++string that it returns will consist entirely of printable ASCII
++characters.  It will not contain whitespace, nor any of the characters
++@samp{:}, @samp{;}, @samp{*}, @samp{!}, or @samp{\}.
++
++The @var{salt} parameter controls which one-way function is used, and
++it also ensures that the output of the one-way function is different
++for every user, even if they have the same passphrase.  This makes it
++harder to guess passphrases from a large user database.  Without salt,
++the attacker could make a guess, run @code{crypt} on it once, and
++compare the result with all the hashes.  Salt forces the attacker to
++make separate calls to @code{crypt} for each user.
++
++To verify a passphrase, pass the previously hashed passphrase as the
++@var{salt}.  To hash a new passphrase for storage, set @var{salt} to a
++string consisting of a prefix plus a sequence of randomly chosen
++characters, according to this table:
++
++@multitable @columnfractions .2 .1 .3
++@headitem One-way function @tab Prefix @tab Random sequence
++@item SHA-2-512
++@tab @samp{$6$}
++@tab 16 characters
++@item SHA-2-256
++@tab @samp{$5$}
++@tab 16 characters
++@item MD5
++@tab @samp{$1$}
++@tab 8 characters
++@item DES
++@tab @samp{}
++@tab 2 characters
++@end multitable
++
++In all cases, the random characters should be chosen from the alphabet
++@code{./0-9A-Za-z}.
++
++With all of the hash functions @emph{except} DES, @var{phrase} can be
++arbitrarily long, and all eight bits of each byte are significant.
++With DES, only the first eight characters of @var{phrase} affect the
++output, and the eighth bit of each byte is also ignored.
++
++@code{crypt} can fail.  Some implementations return @code{NULL} on
++failure, and others return an @emph{invalid} hashed passphrase, which
++will begin with a @samp{*} and will not be the same as @var{salt}.  In
++either case, @code{errno} will be set to indicate the problem.  Some
++of the possible error codes are:
++
++@table @code
++@item EINVAL
++@var{salt} is invalid; neither a previously hashed passphrase, nor a
++well-formed new salt for any of the supported hash functions.
++
++@item EPERM
++The system configuration forbids use of the hash function selected by
++@var{salt}.
++
++@item ENOMEM
++Failed to allocate internal scratch storage.
++
++@item ENOSYS
++@itemx EOPNOTSUPP
++Hashing passphrases is not supported at all, or the hash function
++selected by @var{salt} is not supported.  @Theglibc{} does not use
++these error codes, but they may be encountered on other operating
++systems.
++@end table
++
++@code{crypt} uses static storage for both internal scratchwork and the
++string it returns.  It is not safe to call @code{crypt} from multiple
++threads simultaneously, and the string it returns will be overwritten
++by any subsequent call to @code{crypt}.
++
++@code{crypt} is specified in the X/Open Portability Guide and is
++present on nearly all historical Unix systems.  However, the XPG does
++not specify any one-way functions.
++
++@code{crypt} is declared in @file{unistd.h}.  @Theglibc{} also
++declares this function in @file{crypt.h}.
+ @end deftypefun
+ 
+-@deftypefun {char *} crypt_r (const char *@var{key}, const char *@var{salt}, {struct crypt_data *} @var{data})
++@deftypefun {char *} crypt_r (const char *@var{phrase}, const char *@var{salt}, struct crypt_data *@var{data})
+ @standards{GNU, crypt.h}
+ @safety{@prelim{}@mtsafe{}@asunsafe{@asucorrupt{} @asulock{} @ascuheap{} @ascudlopen{}}@acunsafe{@aculock{} @acsmem{}}}
++@tindex struct crypt_data
+ @c Compared with crypt, this function fixes the @mtasurace:crypt
+ @c problem, but nothing else.
+ 
+-The @code{crypt_r} function does the same thing as @code{crypt}, but
+-takes an extra parameter which includes space for its result (among
+-other things), so it can be reentrant.  @code{data@w{->}initialized} must be
+-cleared to zero before the first time @code{crypt_r} is called.
++The function @code{crypt_r} is a thread-safe version of @code{crypt}.
++Instead of static storage, it uses the memory pointed to by its
++@var{data} argument for both scratchwork and the string it returns.
++It can safely be used from multiple threads, as long as different
++@var{data} objects are used in each thread.  The string it returns
++will still be overwritten by another call with the same @var{data}.
++
++@var{data} must point to a @code{struct crypt_data} object allocated
++by the caller.  All of the fields of @code{struct crypt_data} are
++private, but before one of these objects is used for the first time,
++it must be initialized to all zeroes, using @code{memset} or similar.
++After that, it can be reused for many calls to @code{crypt_r} without
++erasing it again.  @code{struct crypt_data} is very large, so it is
++best to allocate it with @code{malloc} rather than as a local
++variable.  @xref{Memory Allocation}.
+ 
+-The @code{crypt_r} function is a GNU extension.
++@code{crypt_r} is a GNU extension.  It is declared in @file{crypt.h},
++as is @code{struct crypt_data}.
+ @end deftypefun
+ 
+-The @code{crypt} and @code{crypt_r} functions are prototyped in the
+-header @file{crypt.h}.
+-
+-The following short program is an example of how to use @code{crypt} the
+-first time a password is entered.  Note that the @var{salt} generation
+-is just barely acceptable; in particular, it is not unique between
+-machines, and in many applications it would not be acceptable to let an
+-attacker know what time the user's password was last set.
++The following program shows how to use @code{crypt} the first time a
++passphrase is entered.  It uses @code{getentropy} to make the salt as
++unpredictable as possible; @pxref{Unpredictable Bytes}.
+ 
+ @smallexample
+ @include genpass.c.texi
+ @end smallexample
+ 
+-The next program shows how to verify a password.  It prompts the user
+-for a password and prints ``Access granted.'' if the user types
+-@code{GNU libc manual}.
++The next program demonstrates how to verify a passphrase.  It checks a
++hash hardcoded into the program, because looking up real users' hashed
++passphrases may require special privileges (@pxref{User Database}).
++It also shows that different one-way functions produce different
++hashes for the same passphrase.
+ 
+ @smallexample
+ @include testpass.c.texi
+ @end smallexample
+ 
+ @node Unpredictable Bytes
+ @section Generating Unpredictable Bytes
+-
+-Some cryptographic applications (such as session key generation) need
+-unpredictable bytes.
+-
+-In general, application code should use a deterministic random bit
+-generator, which could call the @code{getentropy} function described
+-below internally to obtain randomness to seed the generator.  The
+-@code{getrandom} function is intended for low-level applications which
+-need additional control over the blocking behavior.
++@cindex randomness source
++@cindex random numbers, cryptographic
++@cindex pseudo-random numbers, cryptographic
++@cindex cryptographic random number generator
++@cindex deterministic random bit generator
++@cindex CRNG
++@cindex CSPRNG
++@cindex DRBG
++
++Cryptographic applications often need some random data that will be as
++difficult as possible for a hostile eavesdropper to guess.  For
++instance, encryption keys should be chosen at random, and the ``salt''
++strings used by @code{crypt} (@pxref{Passphrase Storage}) should also
++be chosen at random.
++
++Some pseudo-random number generators do not provide unpredictable-enough
++output for cryptographic applications; @pxref{Pseudo-Random Numbers}.
++Such applications need to use a @dfn{cryptographic random number
++generator} (CRNG), also sometimes called a @dfn{cryptographically strong
++pseudo-random number generator} (CSPRNG) or @dfn{deterministic random
++bit generator} (DRBG).
++
++Currently, @theglibc{} does not provide a cryptographic random number
++generator, but it does provide functions that read random data from a
++@dfn{randomness source} supplied by the operating system.  The
++randomness source is a CRNG at heart, but it also continually
++``re-seeds'' itself from physical sources of randomness, such as
++electronic noise and clock jitter.  This means applications do not need
++to do anything to ensure that the random numbers it produces are
++different on each run.
++
++The catch, however, is that these functions will only produce
++relatively short random strings in any one call.  Often this is not a
++problem, but applications that need more than a few kilobytes of
++cryptographically strong random data should call these functions once
++and use their output to seed a CRNG.
++
++Most applications should use @code{getentropy}.  The @code{getrandom}
++function is intended for low-level applications which need additional
++control over blocking behavior.
+ 
+ @deftypefun int getentropy (void *@var{buffer}, size_t @var{length})
+ @standards{GNU, sys/random.h}
+ @safety{@mtsafe{}@assafe{}@acsafe{}}
+ 
+-This function writes @var{length} bytes of random data to the array
+-starting at @var{buffer}, which must be at most 256 bytes long.  The
+-function returns zero on success.  On failure, it returns @code{-1} and
+-@code{errno} is updated accordingly.
+-
+-The @code{getentropy} function is declared in the header file
+-@file{sys/random.h}.  It is derived from OpenBSD.
+-
+-The @code{getentropy} function is not a cancellation point.  A call to
+-@code{getentropy} can block if the system has just booted and the kernel
+-entropy pool has not yet been initialized.  In this case, the function
+-will keep blocking even if a signal arrives, and return only after the
+-entropy pool has been initialized.
+-
+-The @code{getentropy} function can fail with several errors, some of
+-which are listed below.
++This function writes exactly @var{length} bytes of random data to the
++array starting at @var{buffer}.  @var{length} can be no more than 256.
++On success, it returns zero.  On failure, it returns @math{-1}, and
++@code{errno} is set to indicate the problem.  Some of the possible
++errors are listed below.
+ 
+ @table @code
+ @item ENOSYS
+-The kernel does not implement the required system call.
++The operating system does not implement a randomness source, or does
++not support this way of accessing it.  (For instance, the system call
++used by this function was added to the Linux kernel in version 3.17.)
+ 
+ @item EFAULT
+ The combination of @var{buffer} and @var{length} arguments specifies
+ an invalid memory range.
+ 
+ @item EIO
+-More than 256 bytes of randomness have been requested, or the buffer
+-could not be overwritten with random data for an unspecified reason.
+-
++@var{length} is larger than 256, or the kernel entropy pool has
++suffered a catastrophic failure.
+ @end table
+ 
++A call to @code{getentropy} can only block when the system has just
++booted and the randomness source has not yet been initialized.
++However, if it does block, it cannot be interrupted by signals or
++thread cancellation.  Programs intended to run in very early stages of
++the boot process may need to use @code{getrandom} in non-blocking mode
++instead, and be prepared to cope with random data not being available
++at all.
++
++The @code{getentropy} function is declared in the header file
++@file{sys/random.h}.  It is derived from OpenBSD.
+ @end deftypefun
+ 
+ @deftypefun ssize_t getrandom (void *@var{buffer}, size_t @var{length}, unsigned int @var{flags})
+ @standards{GNU, sys/random.h}
+ @safety{@mtsafe{}@assafe{}@acsafe{}}
+ 
+-This function writes @var{length} bytes of random data to the array
+-starting at @var{buffer}.  On success, this function returns the number
+-of bytes which have been written to the buffer (which can be less than
+-@var{length}).  On error, @code{-1} is returned, and @code{errno} is
+-updated accordingly.
+-
+-The @code{getrandom} function is declared in the header file
+-@file{sys/random.h}.  It is a GNU extension.
+-
+-The following flags are defined for the @var{flags} argument:
++This function writes up to @var{length} bytes of random data to the
++array starting at @var{buffer}.  The @var{flags} argument should be
++either zero, or the bitwise OR of some of the following flags:
+ 
+ @table @code
+ @item GRND_RANDOM
+-Use the @file{/dev/random} (blocking) pool instead of the
+-@file{/dev/urandom} (non-blocking) pool to obtain randomness.  If the
+-@code{GRND_RANDOM} flag is specified, the @code{getrandom} function can
+-block even after the randomness source has been initialized.
++Use the @file{/dev/random} (blocking) source instead of the
++@file{/dev/urandom} (non-blocking) source to obtain randomness.
++
++If this flag is specified, the call may block, potentially for quite
++some time, even after the randomness source has been initialized.  If it
++is not specified, the call can only block when the system has just
++booted and the randomness source has not yet been initialized.
+ 
+ @item GRND_NONBLOCK
+ Instead of blocking, return to the caller immediately if no data is
+ available.
+ @end table
+ 
+-The @code{getrandom} function is a cancellation point.
+-
+-Obtaining randomness from the @file{/dev/urandom} pool (i.e., a call
+-without the @code{GRND_RANDOM} flag) can block if the system has just
+-booted and the pool has not yet been initialized.
+-
+-The @code{getrandom} function can fail with several errors, some of
+-which are listed below.  In addition, the function may not fill the
+-buffer completely and return a value less than @var{length}.
++Unlike @code{getentropy}, the @code{getrandom} function is a
++cancellation point, and if it blocks, it can be interrupted by
++signals.
++
++On success, @code{getrandom} returns the number of bytes which have
++been written to the buffer, which may be less than @var{length}.  On
++error, it returns @math{-1}, and @code{errno} is set to indicate the
++problem.  Some of the possible errors are:
+ 
+ @table @code
+ @item ENOSYS
+-The kernel does not implement the @code{getrandom} system call.
++The operating system does not implement a randomness source, or does
++not support this way of accessing it.  (For instance, the system call
++used by this function was added to the Linux kernel in version 3.17.)
+ 
+ @item EAGAIN
+ No random data was available and @code{GRND_NONBLOCK} was specified in
+ @var{flags}.
+ 
+@@ -226,6 +333,9 @@ the kernel randomness pool is initialize
+ 
+ @item EINVAL
+ The @var{flags} argument contains an invalid combination of flags.
+ @end table
+ 
++The @code{getrandom} function is declared in the header file
++@file{sys/random.h}.  It is a GNU extension.
++
+ @end deftypefun
+Index: glibc-2.27/manual/examples/genpass.c
+===================================================================
+--- glibc-2.27.orig/manual/examples/genpass.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/manual/examples/genpass.c	2018-12-18 10:18:26.072978385 +0000
+@@ -14,36 +14,46 @@
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, if not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+ #include <stdio.h>
+-#include <time.h>
+ #include <unistd.h>
+ #include <crypt.h>
+ 
+ int
+ main(void)
+ {
+-  unsigned long seed[2];
+-  char salt[] = "$1$........";
+-  const char *const seedchars =
++  unsigned char ubytes[16];
++  char salt[20];
++  const char *const saltchars =
+     "./0123456789ABCDEFGHIJKLMNOPQRST"
+     "UVWXYZabcdefghijklmnopqrstuvwxyz";
+-  char *password;
++  char *hash;
+   int i;
+ 
+-  /* Generate a (not very) random seed.
+-     You should do it better than this...  */
+-  seed[0] = time(NULL);
+-  seed[1] = getpid() ^ (seed[0] >> 14 & 0x30000);
+-
+-  /* Turn it into printable characters from `seedchars'.  */
+-  for (i = 0; i < 8; i++)
+-    salt[3+i] = seedchars[(seed[i/5] >> (i%5)*6) & 0x3f];
+-
+-  /* Read in the user's password and encrypt it.  */
+-  password = crypt(getpass("Password:"), salt);
++  /* Retrieve 16 unpredictable bytes from the operating system.  */
++  if (getentropy (ubytes, sizeof ubytes))
++    {
++      perror ("getentropy");
++      return 1;
++    }
++
++  /* Use them to fill in the salt string.  */
++  salt[0] = '$';
++  salt[1] = '5'; /* SHA-256 */
++  salt[2] = '$';
++  for (i = 0; i < 16; i++)
++    salt[3+i] = saltchars[ubytes[i] & 0x3f];
++  salt[3+i] = '\0';
++
++  /* Read in the user's passphrase and hash it.  */
++  hash = crypt (getpass ("Enter new passphrase: "), salt);
++  if (!hash || hash[0] == '*')
++    {
++      perror ("crypt");
++      return 1;
++    }
+ 
+   /* Print the results.  */
+-  puts(password);
++  puts (hash);
+   return 0;
+ }
+Index: glibc-2.27/manual/examples/mygetpass.c
+===================================================================
+--- glibc-2.27.orig/manual/examples/mygetpass.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/manual/examples/mygetpass.c	2018-12-18 10:18:26.075978348 +0000
+@@ -1,6 +1,6 @@
+-/* Reading Passwords
++/* Reading passphrases manually.
+    Copyright (C) 1991-2018 Free Software Foundation, Inc.
+ 
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+@@ -30,11 +30,11 @@ my_getpass (char **lineptr, size_t *n, F
+   new = old;
+   new.c_lflag &= ~ECHO;
+   if (tcsetattr (fileno (stream), TCSAFLUSH, &new) != 0)
+     return -1;
+ 
+-  /* Read the password.  */
++  /* Read the passphrase  */
+   nread = getline (lineptr, n, stream);
+ 
+   /* Restore terminal.  */
+   (void) tcsetattr (fileno (stream), TCSAFLUSH, &old);
+ 
+Index: glibc-2.27/manual/examples/testpass.c
+===================================================================
+--- glibc-2.27.orig/manual/examples/testpass.c	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/manual/examples/testpass.c	2018-12-18 10:18:26.077978323 +0000
+@@ -1,6 +1,6 @@
+-/* Verify a password.
++/* Verify a passphrase.
+    Copyright (C) 1991-2018 Free Software Foundation, Inc.
+ 
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+@@ -18,26 +18,50 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <unistd.h>
+ #include <crypt.h>
+ 
++/* @samp{GNU's Not Unix} hashed using SHA-256, MD5, and DES.  */
++static const char hash_sha[] =
++  "$5$DQ2z5NHf1jNJnChB$kV3ZTR0aUaosujPhLzR84Llo3BsspNSe4/tsp7VoEn6";
++static const char hash_md5[] = "$1$A3TxDv41$rtXVTUXl2LkeSV0UU5xxs1";
++static const char hash_des[] = "FgkTuF98w5DaI";
++
+ int
+ main(void)
+ {
+-  /* Hashed form of "GNU libc manual".  */
+-  const char *const pass = "$1$/iSaq7rB$EoUw5jJPPvAPECNaaWzMK/";
+-
+-  char *result;
+-  int ok;
++  char *phrase;
++  int status = 0;
+ 
+-/*@group*/
+-  /* Read in the user's password and encrypt it,
+-     passing the expected password in as the salt.  */
+-  result = crypt(getpass("Password:"), pass);
+-/*@end group*/
++  /* Prompt for a passphrase.  */
++  phrase = getpass ("Enter passphrase: ");
+ 
+-  /* Test the result.  */
+-  ok = strcmp (result, pass) == 0;
++  /* Compare against the stored hashes.  Any input that begins with
++     @samp{GNU's No} will match the DES hash, but the other two will
++     only match @samp{GNU's Not Unix}.  */
++
++  if (strcmp (crypt (phrase, hash_sha), hash_sha))
++    {
++      puts ("SHA: not ok");
++      status = 1;
++    }
++  else
++    puts ("SHA: ok");
++
++  if (strcmp (crypt (phrase, hash_md5), hash_md5))
++    {
++      puts ("MD5: not ok");
++      status = 1;
++    }
++  else
++    puts ("MD5: ok");
++
++  if (strcmp (crypt (phrase, hash_des), hash_des))
++    {
++      puts ("DES: not ok");
++      status = 1;
++    }
++  else
++    puts ("DES: ok");
+ 
+-  puts(ok ? "Access granted." : "Access denied.");
+-  return ok ? 0 : 1;
++  return status;
+ }
+Index: glibc-2.27/manual/intro.texi
+===================================================================
+--- glibc-2.27.orig/manual/intro.texi	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/manual/intro.texi	2018-12-18 10:18:26.079978298 +0000
+@@ -1319,11 +1319,10 @@ this manual.
+ 
+ @c The following chapters need overview text to be added:
+ @c Message Translation (8)
+ @c Resource Usage And Limitations (22)
+ @c Inter-Process Communication (27)
+-@c DES Encryption and Password Handling (33)
+ @c Debugging support (34)
+ @c POSIX Threads (35)
+ @c Internal Probes (36)
+ @c Platform-specific facilities (AE)
+ @c Contributors to (AF)
+Index: glibc-2.27/manual/memory.texi
+===================================================================
+--- glibc-2.27.orig/manual/memory.texi	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/manual/memory.texi	2018-12-18 10:18:26.081978273 +0000
+@@ -3450,11 +3450,11 @@ paging allocator which pages should rema
+ system performance.  In this case, locking pages can help.
+ 
+ @item
+ Privacy.  If you keep secrets in virtual memory and that virtual memory
+ gets paged out, that increases the chance that the secrets will get out.
+-If a password gets written out to disk swap space, for example, it might
++If a passphrase gets written out to disk swap space, for example, it might
+ still be there long after virtual and real memory have been wiped clean.
+ 
+ @end itemize
+ 
+ Be aware that when you lock a page, that's one fewer page frame that can
+Index: glibc-2.27/manual/nss.texi
+===================================================================
+--- glibc-2.27.orig/manual/nss.texi	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/manual/nss.texi	2018-12-18 10:18:26.083978248 +0000
+@@ -82,19 +82,19 @@ Network wide list of host and users, @px
+ @item networks
+ Network names and numbers, @pxref{Networks Database}.
+ @item protocols
+ Network protocols, @pxref{Protocols Database}.
+ @item passwd
+-User passwords, @pxref{User Database}.
++User identities, @pxref{User Database}.
+ @item rpc
+-Remote procedure call names and numbers,
++Remote procedure call names and numbers.
+ @comment @pxref{RPC Database}.
+ @item services
+ Network services, @pxref{Services Database}.
+ @item shadow
+-Shadow user passwords,
+-@comment @pxref{Shadow Password Database}.
++User passphrase hashes and related information.
++@comment @pxref{Shadow Passphrase Database}.
+ @end table
+ 
+ @noindent
+ There will be some more added later (@code{automount}, @code{bootparams},
+ @code{netmasks}, and @code{publickey}).
+@@ -524,11 +524,11 @@ linked programs, the thread-local variab
+ with the main application.)
+ 
+ The @code{get@var{XXX}by@var{YYY}} functions are the most important
+ functions in the NSS modules.  But there are others which implement
+ the other ways to access system databases (say for the
+-password database, there are @code{setpwent}, @code{getpwent}, and
++user database, there are @code{setpwent}, @code{getpwent}, and
+ @code{endpwent}).  These will be described in more detail later.
+ Here we give a general way to determine the
+ signature of the module function:
+ 
+ @itemize @bullet
+@@ -648,11 +648,11 @@ implementation obviously is different fo
+ general rules must be followed by all functions.
+ 
+ In fact there are four kinds of different functions which may appear in
+ the interface.  All derive from the traditional ones for system databases.
+ @var{db} in the following table is normally an abbreviation for the
+-database (e.g., it is @code{pw} for the password database).
++database (e.g., it is @code{pw} for the user database).
+ 
+ @table @code
+ @item enum nss_status _nss_@var{database}_set@var{db}ent (void)
+ This function prepares the service for following operations.  For a
+ simple file based lookup this means files could be opened, for other
+Index: glibc-2.27/manual/socket.texi
+===================================================================
+--- glibc-2.27.orig/manual/socket.texi	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/manual/socket.texi	2018-12-18 10:18:26.085978223 +0000
+@@ -255,11 +255,11 @@ address for other sockets, but this is u
+ you send data from a socket, or use it to initiate a connection, the
+ system assigns an address automatically if you have not specified one.
+ 
+ Occasionally a client needs to specify an address because the server
+ discriminates based on address; for example, the rsh and rlogin
+-protocols look at the client's socket address and only bypass password
++protocols look at the client's socket address and only bypass passphrase
+ checking if it is less than @code{IPPORT_RESERVED} (@pxref{Ports}).
+ 
+ The details of socket addresses vary depending on what namespace you are
+ using.  @xref{Local Namespace}, or @ref{Internet Namespace}, for specific
+ information.
+@@ -3275,11 +3275,11 @@ or request that comes in.  If @var{style
+ @var{wait} @strong{must} be @samp{nowait}.
+ 
+ @var{user} is the user name that the server should run as.  @code{inetd} runs
+ as root, so it can set the user ID of its children arbitrarily.  It's
+ best to avoid using @samp{root} for @var{user} if you can; but some
+-servers, such as Telnet and FTP, read a username and password
++servers, such as Telnet and FTP, read a username and passphrase
+ themselves.  These servers need to be root initially so they can log
+ in as commanded by the data coming over the network.
+ 
+ @var{program} together with @var{arguments} specifies the command to
+ run to start the server.  @var{program} should be an absolute file
+Index: glibc-2.27/manual/terminal.texi
+===================================================================
+--- glibc-2.27.orig/manual/terminal.texi	2018-12-18 10:18:24.865993475 +0000
++++ glibc-2.27/manual/terminal.texi	2018-12-18 10:18:26.087978198 +0000
+@@ -22,11 +22,11 @@ descriptor is and how to open a file des
+                                  signals, editing.  Posix.
+ * BSD Terminal Modes::          BSD compatible terminal mode setting
+ * Line Control::                Sending break sequences, clearing
+                                  terminal buffers @dots{}
+ * Noncanon Example::            How to read single characters without echo.
+-* getpass::                     Prompting the user for a password.
++* getpass::                     Prompting the user for a passphrase.
+ * Pseudo-Terminals::            How to open a pseudo-terminal.
+ @end menu
+ 
+ @node Is It a Terminal
+ @section Identifying Terminals
+@@ -1871,37 +1871,37 @@ a process is stopped or continued; see @
+ existing shells do not actually do this, so you may wish to establish
+ handlers for job control signals that reset terminal modes.  The above
+ example does so.
+ 
+ @node getpass
+-@section Reading Passwords
++@section Reading Passphrases
+ 
+-When reading in a password, it is desirable to avoid displaying it on
++When reading in a passphrase, it is desirable to avoid displaying it on
+ the screen, to help keep it secret.  The following function handles this
+ in a convenient way.
+ 
+ @deftypefun {char *} getpass (const char *@var{prompt})
+ @standards{BSD, unistd.h}
+ @safety{@prelim{}@mtunsafe{@mtasuterm{}}@asunsafe{@ascuheap{} @asulock{} @asucorrupt{}}@acunsafe{@acuterm{} @aculock{} @acucorrupt{}}}
+ @c This function will attempt to create a stream for terminal I/O, but
+ @c will fallback to stdio/stderr.  It attempts to change the terminal
+-@c mode in a thread-unsafe way, write out the prompt, read the password,
++@c mode in a thread-unsafe way, write out the prompt, read the passphrase,
+ @c then restore the terminal mode.  It has a cleanup to close the stream
+ @c in case of (synchronous) cancellation, but not to restore the
+ @c terminal mode.
+ 
+ @code{getpass} outputs @var{prompt}, then reads a string in from the
+ terminal without echoing it.  It tries to connect to the real terminal,
+ @file{/dev/tty}, if possible, to encourage users not to put plaintext
+-passwords in files; otherwise, it uses @code{stdin} and @code{stderr}.
++passphrases in files; otherwise, it uses @code{stdin} and @code{stderr}.
+ @code{getpass} also disables the INTR, QUIT, and SUSP characters on the
+ terminal using the @code{ISIG} terminal attribute (@pxref{Local Modes}).
+ The terminal is flushed before and after @code{getpass}, so that
+-characters of a mistyped password are not accidentally visible.
++characters of a mistyped passphrase are not accidentally visible.
+ 
+ In other C libraries, @code{getpass} may only return the first
+-@code{PASS_MAX} bytes of a password.  @Theglibc{} has no limit, so
++@code{PASS_MAX} bytes of a passphrase.  @Theglibc{} has no limit, so
+ @code{PASS_MAX} is undefined.
+ 
+ The prototype for this function is in @file{unistd.h}.  @code{PASS_MAX}
+ would be defined in @file{limits.h}.
+ @end deftypefun
+Index: glibc-2.27/manual/users.texi
+===================================================================
+--- glibc-2.27.orig/manual/users.texi	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/manual/users.texi	2018-12-18 10:18:26.089978173 +0000
+@@ -1728,10 +1728,20 @@ members.  Older systems do not even have
+ This section describes how to search and scan the database of registered
+ users.  The database itself is kept in the file @file{/etc/passwd} on
+ most systems, but on some systems a special network server gives access
+ to it.
+ 
++Historically, this database included one-way hashes of user
++passphrases (@pxref{Passphrase Storage}) as well as public information
++about each user (such as their user ID and full name).  Many of the
++functions and data structures associated with this database, and the
++filename @file{/etc/passwd} itself, reflect this history.  However,
++the information in this database is available to all users, and it is
++no longer considered safe to make passphrase hashes available to all
++users, so they have been moved to a ``shadow'' database that can only
++be accessed with special privileges.
++
+ @menu
+ * User Data Structure::         What each user record contains.
+ * Lookup User::                 How to look for a particular user.
+ * Scanning All Users::          Scanning the list of all users, one by one.
+ * Writing a User Entry::        How a program can rewrite a user's record.
+@@ -1751,12 +1761,14 @@ entries in the system user data base.  I
+ 
+ @table @code
+ @item char *pw_name
+ The user's login name.
+ 
+-@item char *pw_passwd.
+-The encrypted password string.
++@item char *pw_passwd
++Historically, this field would hold the one-way hash of the user's
++passphrase.  Nowadays, it will almost always be the single character
++@samp{x}, indicating that the hash is in the shadow database.
+ 
+ @item uid_t pw_uid
+ The user ID number.
+ 
+ @item gid_t pw_gid
+@@ -2103,11 +2115,11 @@ This function reads the next user entry
+ pointer to the entry.  The structure is statically allocated and is
+ rewritten on subsequent calls to @code{fgetpwent}.  You must copy the
+ contents of the structure if you wish to save the information.
+ 
+ The stream must correspond to a file in the same format as the standard
+-password database file.
++user database file.
+ @end deftypefun
+ 
+ @deftypefun int fgetpwent_r (FILE *@var{stream}, struct passwd *@var{result_buf}, char *@var{buffer}, size_t @var{buflen}, struct passwd **@var{result})
+ @standards{GNU, pwd.h}
+ @safety{@prelim{}@mtsafe{}@asunsafe{@asucorrupt{}}@acunsafe{@acucorrupt{} @aculock{}}}
+@@ -2124,11 +2136,11 @@ structure pointed to by @var{result_buf}
+ first @var{buflen} bytes of the additional buffer pointed to by
+ @var{buffer} are used to contain additional information, normally
+ strings which are pointed to by the elements of the result structure.
+ 
+ The stream must correspond to a file in the same format as the standard
+-password database file.
++user database file.
+ 
+ If the function returns zero @var{result} points to the structure with
+ the wanted data (normally this is in @var{result_buf}).  If errors
+ occurred the return value is nonzero and @var{result} contains a null
+ pointer.
+@@ -2232,11 +2244,10 @@ This function exists for compatibility w
+ avoid using it, because it makes sense only on the assumption that the
+ @code{struct passwd} structure has no members except the standard ones;
+ on a system which merges the traditional Unix data base with other
+ extended information about users, adding an entry using this function
+ would inevitably leave out much of the important information.
+-@c Then how are programmers to modify the password file? -zw
+ 
+ The group and user ID fields are left empty if the group or user name
+ starts with a - or +.
+ 
+ The function @code{putpwent} is declared in @file{pwd.h}.
+Index: glibc-2.27/nscd/pwdcache.c
+===================================================================
+--- glibc-2.27.orig/nscd/pwdcache.c	2018-12-18 10:17:17.254838730 +0000
++++ glibc-2.27/nscd/pwdcache.c	2018-12-18 10:18:26.091978148 +0000
+@@ -433,13 +433,13 @@ addpwbyX (struct database_dyn *db, int f
+   scratch_buffer_init (&tmpbuf);
+ 
+   if (__glibc_unlikely (debug_level > 0))
+     {
+       if (he == NULL)
+-	dbg_log (_("Haven't found \"%s\" in password cache!"), keystr);
++	dbg_log (_("Haven't found \"%s\" in user database cache!"), keystr);
+       else
+-	dbg_log (_("Reloading \"%s\" in password cache!"), keystr);
++	dbg_log (_("Reloading \"%s\" in user database cache!"), keystr);
+     }
+ 
+   while (lookup (req->type, key, &resultbuf,
+ 		 tmpbuf.data, tmpbuf.length, &pwd) != 0
+ 	 && (errval = errno) == ERANGE)
+Index: glibc-2.27/posix/unistd.h
+===================================================================
+--- glibc-2.27.orig/posix/unistd.h	2018-12-18 10:18:23.464011002 +0000
++++ glibc-2.27/posix/unistd.h	2018-12-18 10:18:26.094978110 +0000
+@@ -1114,11 +1114,15 @@ ssize_t copy_file_range (int __infd, __o
+    media.  */
+ extern int fdatasync (int __fildes);
+ #endif /* Use POSIX199309 */
+ 
+ #ifdef __USE_MISC
+-/* Encrypt at most 8 characters from KEY using salt to perturb DES.  */
++/* One-way hash PHRASE, returning a string suitable for storage in the
++   user database.  SALT selects the one-way function to use, and
++   ensures that no two users' hashes are the same, even if they use
++   the same passphrase.  The return value points to static storage
++   which will be overwritten by the next call to crypt.  */
+ extern char *crypt (const char *__key, const char *__salt)
+      __THROW __nonnull ((1, 2));
+ #endif
+ 
+ #ifdef	__USE_XOPEN
+Index: glibc-2.27/pwd/pwd.h
+===================================================================
+--- glibc-2.27.orig/pwd/pwd.h	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/pwd/pwd.h	2018-12-18 10:18:26.097978073 +0000
+@@ -43,15 +43,16 @@ typedef __gid_t gid_t;
+ typedef __uid_t uid_t;
+ #  define __uid_t_defined
+ # endif
+ #endif
+ 
+-/* The passwd structure.  */
++/* A record in the user database.  */
+ struct passwd
+ {
+   char *pw_name;		/* Username.  */
+-  char *pw_passwd;		/* Password.  */
++  char *pw_passwd;		/* Hashed passphrase, if shadow database
++                                   not in use (see shadow.h).  */
+   __uid_t pw_uid;		/* User ID.  */
+   __gid_t pw_gid;		/* Group ID.  */
+   char *pw_gecos;		/* Real name.  */
+   char *pw_dir;			/* Home directory.  */
+   char *pw_shell;		/* Shell program.  */
+@@ -62,55 +63,55 @@ struct passwd
+ # include <bits/types/FILE.h>
+ #endif
+ 
+ 
+ #if defined __USE_MISC || defined __USE_XOPEN_EXTENDED
+-/* Rewind the password-file stream.
++/* Rewind the user database stream.
+ 
+    This function is a possible cancellation point and therefore not
+    marked with __THROW.  */
+ extern void setpwent (void);
+ 
+-/* Close the password-file stream.
++/* Close the user database stream.
+ 
+    This function is a possible cancellation point and therefore not
+    marked with __THROW.  */
+ extern void endpwent (void);
+ 
+-/* Read an entry from the password-file stream, opening it if necessary.
++/* Read an entry from the user database stream, opening it if necessary.
+ 
+    This function is a possible cancellation point and therefore not
+    marked with __THROW.  */
+ extern struct passwd *getpwent (void);
+ #endif
+ 
+ #ifdef	__USE_MISC
+-/* Read an entry from STREAM.
++/* Read a user database entry from STREAM.
+ 
+    This function is not part of POSIX and therefore no official
+    cancellation point.  But due to similarity with an POSIX interface
+    or due to the implementation it is a cancellation point and
+    therefore not marked with __THROW.  */
+ extern struct passwd *fgetpwent (FILE *__stream) __nonnull ((1));
+ 
+-/* Write the given entry onto the given stream.
++/* Write a given user database entry onto the given stream.
+ 
+    This function is not part of POSIX and therefore no official
+    cancellation point.  But due to similarity with an POSIX interface
+    or due to the implementation it is a cancellation point and
+    therefore not marked with __THROW.  */
+ extern int putpwent (const struct passwd *__restrict __p,
+ 		     FILE *__restrict __f);
+ #endif
+ 
+-/* Search for an entry with a matching user ID.
++/* Retrieve the user database entry for the given user ID.
+ 
+    This function is a possible cancellation point and therefore not
+    marked with __THROW.  */
+ extern struct passwd *getpwuid (__uid_t __uid);
+ 
+-/* Search for an entry with a matching username.
++/* Retrieve the user database entry for the given username.
+ 
+    This function is a possible cancellation point and therefore not
+    marked with __THROW.  */
+ extern struct passwd *getpwnam (const char *__name) __nonnull ((1));
+ 
+@@ -153,12 +154,12 @@ extern int getpwnam_r (const char *__res
+ 		       struct passwd **__restrict __result)
+ 		       __nonnull ((1, 2, 3, 5));
+ 
+ 
+ # ifdef	__USE_MISC
+-/* Read an entry from STREAM.  This function is not standardized and
+-   probably never will.
++/* Read a user database entry from STREAM.  This function is not
++   standardized and probably never will.
+ 
+    This function is not part of POSIX and therefore no official
+    cancellation point.  But due to similarity with an POSIX interface
+    or due to the implementation it is a cancellation point and
+    therefore not marked with __THROW.  */
+@@ -170,13 +171,13 @@ extern int fgetpwent_r (FILE *__restrict
+ # endif
+ 
+ #endif	/* POSIX or reentrant */
+ 
+ #ifdef __USE_GNU
+-/* Re-construct the password-file line for the given uid
+-   in the given buffer.  This knows the format that the caller
+-   will expect, but this need not be the format of the password file.
++/* Write a traditional /etc/passwd line, based on the user database
++   entry for the given UID, to BUFFER; space for BUFFER must be
++   allocated by the caller.
+ 
+    This function is not part of POSIX and therefore no official
+    cancellation point.  But due to similarity with an POSIX interface
+    or due to the implementation it is a cancellation point and
+    therefore not marked with __THROW.  */
+Index: glibc-2.27/shadow/shadow.h
+===================================================================
+--- glibc-2.27.orig/shadow/shadow.h	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/shadow/shadow.h	2018-12-18 10:18:26.099978048 +0000
+@@ -13,11 +13,15 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-/* Declaration of types and functions for shadow password suite.  */
++/* Declaration of types and functions for "shadow" storage of hashed
++   passphrases.  The shadow database is like the user database, but is
++   only accessible with special privileges, so that malicious users
++   cannot retrieve everyone else's hashed passphrase to brute-force at
++   their convenience.  */
+ 
+ #ifndef _SHADOW_H
+ #define _SHADOW_H	1
+ 
+ #include <features.h>
+@@ -33,15 +37,15 @@
+ #define	SHADOW _PATH_SHADOW
+ 
+ 
+ __BEGIN_DECLS
+ 
+-/* Structure of the password file.  */
++/* A record in the shadow database.  */
+ struct spwd
+   {
+     char *sp_namp;		/* Login name.  */
+-    char *sp_pwdp;		/* Encrypted password.  */
++    char *sp_pwdp;		/* Hashed passphrase.  */
+     long int sp_lstchg;		/* Date of last change.  */
+     long int sp_min;		/* Minimum number of days between changes.  */
+     long int sp_max;		/* Maximum number of days between changes.  */
+     long int sp_warn;		/* Number of days to warn user to change
+ 				   the password.  */
+@@ -99,11 +103,11 @@ extern struct spwd *sgetspent (const cha
+    cancellation point.  But due to similarity with an POSIX interface
+    or due to the implementation it is a cancellation point and
+    therefore not marked with __THROW.  */
+ extern struct spwd *fgetspent (FILE *__stream);
+ 
+-/* Write line containing shadow password entry to stream.
++/* Write line containing shadow entry to stream.
+ 
+    This function is not part of POSIX and therefore no official
+    cancellation point.  But due to similarity with an POSIX interface
+    or due to the implementation it is a cancellation point and
+    therefore not marked with __THROW.  */
+@@ -135,14 +139,14 @@ extern int fgetspent_r (FILE *__stream,
+ 
+ 
+ /* The simple locking functionality provided here is not suitable for
+    multi-threaded applications.  */
+ 
+-/* Protect password file against multi writers.  */
++/* Request exclusive access to /etc/passwd and /etc/shadow.  */
+ extern int lckpwdf (void) __THROW;
+ 
+-/* Unlock password file.  */
++/* Release exclusive access to /etc/passwd and /etc/shadow.  */
+ extern int ulckpwdf (void) __THROW;
+ 
+ __END_DECLS
+ 
+ #endif /* shadow.h */

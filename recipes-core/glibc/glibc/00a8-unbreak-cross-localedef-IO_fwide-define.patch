@@ -1,0 +1,140 @@
+From 9c6fb039e25a65f5d195a03dca2bf44eb2e88fa5 Mon Sep 17 00:00:00 2001
+From: h5b <h5b@users.noreply.github.com>
+Date: Mon, 25 Jan 2021 12:26:58 +0100
+Subject: [PATCH] Unbreak compilation of cross-localedef-native due to missing
+ define of _IO_fwide() which gets included only when _LIBC is defined as
+ discussed here: https://marc.info/?l=openembedded-core&m=154715365203505&w=2
+
+Upstream-Status: Inappropriate (OE-specific)
+
+---
+ argp/argp-fmtstream.c | 4 ++++
+ argp/argp-help.c      | 2 ++
+ 2 files changed, 6 insertions(+)
+
+Index: argp/argp-fmtstream.c
+===================================================================
+--- a/argp/argp-fmtstream.c
++++ b/argp/argp-fmtstream.c
+@@ -149,9 +149,11 @@ __argp_fmtstream_update (argp_fmtstream_
+ 	      size_t i;
+ 	      for (i = 0; i < pad; i++)
+ 		{
++#ifdef _LIBC
+ 		  if (_IO_fwide (fs->stream, 0) > 0)
+ 		    putwc_unlocked (L' ', fs->stream);
+ 		  else
++#endif
+ 		    putc_unlocked (' ', fs->stream);
+ 		}
+ 	    }
+@@ -312,9 +314,11 @@ __argp_fmtstream_update (argp_fmtstream_
+ 	      *nl++ = ' ';
+ 	  else
+ 	    for (i = 0; i < fs->wmargin; ++i)
++#ifdef _LIBC
+ 	      if (_IO_fwide (fs->stream, 0) > 0)
+ 		putwc_unlocked (L' ', fs->stream);
+ 	      else
++#endif
+ 		putc_unlocked (' ', fs->stream);
+
+ 	  /* Copy the tail of the original buffer into the current buffer
+Index: argp/argp-help.c
+===================================================================
+--- a/argp/argp-help.c
++++ b/argp/argp-help.c
+@@ -1873,9 +1873,11 @@ __argp_failure (const struct argp_state
+ #endif
+ 	    }
+
++#ifdef _LIBC
+ 	  if (_IO_fwide (stream, 0) > 0)
+ 	    putwc_unlocked (L'\n', stream);
+ 	  else
++#endif
+ 	    putc_unlocked ('\n', stream);
+
+ #if _LIBC || (HAVE_FLOCKFILE && HAVE_FUNLOCKFILE)
+Index: locale/programs/localedef.c
+===================================================================
+--- a/locale/programs/localedef.c
++++ b/locale/programs/localedef.c
+@@ -88,6 +88,9 @@ static bool list_archive;
+ /* Maximum number of retries when opening the locale archive.  */
+ int max_locarchive_open_retry = 10;
+
++/* If true do not create hard links*/
++bool hard_links;
++
+
+ /* Name and version of program.  */
+ static void print_version (FILE *stream, struct argp_state *state);
+@@ -106,6 +109,7 @@ void (*argp_program_version_hook) (FILE
+ #define OPT_NO_WARN 402
+ #define OPT_WARN 403
+ #define OPT_UINT32_ALIGN 404
++#define OPT_NO_HARD_LINKS 405
+
+ /* Definitions of arguments for argp functions.  */
+ static const struct argp_option options[] =
+@@ -121,6 +125,8 @@ static const struct argp_option options[
+   { NULL, 0, NULL, 0, N_("Output control:") },
+   { "force", 'c', NULL, 0,
+     N_("Create output even if warning messages were issued") },
++  { "no-hard-links", OPT_NO_HARD_LINKS, NULL, 0,
++    N_("Do not create hardlinks between installed locales") },
+   { "prefix", OPT_PREFIX, N_("PATH"), 0, N_("Optional output file prefix") },
+   { "posix", OPT_POSIX, NULL, 0, N_("Strictly conform to POSIX") },
+   { "quiet", OPT_QUIET, NULL, 0,
+@@ -397,6 +403,9 @@ parse_opt (int key, char *arg, struct ar
+     case OPT_UINT32_ALIGN:
+       uint32_align_mask = strtol (arg, NULL, 0) - 1;
+       break;
++    case OPT_NO_HARD_LINKS:
++      hard_links = false;
++      break;
+     case 'c':
+       force_output = 1;
+       break;
+Index: locale/programs/localedef.h
+===================================================================
+--- a/locale/programs/localedef.h
++++ b/locale/programs/localedef.h
+@@ -118,6 +118,7 @@ extern const char *repertoire_global;
+ extern int max_locarchive_open_retry;
+ extern bool no_archive;
+ extern const char *alias_file;
++extern bool hard_links;
+
+
+ /* Prototypes for a few program-wide used functions.  */
+Index: locale/programs/locfile.c
+===================================================================
+--- a/locale/programs/locfile.c
++++ b/locale/programs/locfile.c
+@@ -705,7 +705,7 @@ write_locale_data (const char *output_pa
+   size_t cnt, step, maxiov;
+   int fd;
+   char *fname;
+-  const char **other_paths;
++  const char **other_paths = NULL;
+   uint32_t header[2];
+   size_t n_elem;
+   struct iovec vec[3];
+@@ -831,8 +831,13 @@ failure while writing data for category
+   close (fd);
+
+   /* Compare the file with the locale data files for the same category in
+-     other locales, and see if we can reuse it, to save disk space.  */
+-  other_paths = siblings (output_path);
++     other locales, and see if we can reuse it, to save disk space.
++     If --no-hard-links is submitted as arg to localedef hard_links is
++     false, other_paths remain NULL and we skip the optimization below.
++     Note, we enforce this in order to use poky/dunfell with our legacy
++     glibc version 2.27. */
++  if (hard_links)
++    other_paths = siblings (output_path);
+   if (other_paths != NULL)
+     {
+       struct stat64 fname_stat;

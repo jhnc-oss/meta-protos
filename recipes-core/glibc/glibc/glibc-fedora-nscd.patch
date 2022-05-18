@@ -1,0 +1,20 @@
+Fedora-specific configuration adjustment to introduce the nscd user.
+(Upstream does not assume this user exists.)
+
+Index: glibc-2.27/nscd/nscd.conf
+===================================================================
+--- glibc-2.27.orig/nscd/nscd.conf	2018-02-01 16:17:18.000000000 +0000
++++ glibc-2.27/nscd/nscd.conf	2018-12-18 10:14:50.760670160 +0000
+@@ -31,11 +31,11 @@
+ 
+ 
+ #	logfile			/var/log/nscd.log
+ #	threads			4
+ #	max-threads		32
+-#	server-user		nobody
++	server-user		nscd
+ #	stat-user		somebody
+ 	debug-level		0
+ #	reload-count		5
+ 	paranoia		no
+ #	restart-interval	3600
