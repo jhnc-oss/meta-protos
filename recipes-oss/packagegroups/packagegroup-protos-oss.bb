@@ -7,6 +7,7 @@ RDEPENDS_${PN} = "\
     cmocka \
     cppcheck \
     cpputest \
+    debugpy \
     minizip \
     sshpass \
     xclip \
