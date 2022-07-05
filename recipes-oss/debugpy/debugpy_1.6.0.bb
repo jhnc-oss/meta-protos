@@ -28,6 +28,10 @@ do_compile_append() {
     mv ${@get_so_target(d)}.so ../${@get_so_target(d)}.so
 }
 
+do_install_append() {
+    chmod -R 0755 ${D}${libdir}
+}
+
 inherit pypi setuptools3
 
 BBCLASSEXTEND = "native nativesdk"
