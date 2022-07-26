@@ -6,6 +6,13 @@ IMAGE_FEATURES += "x11-base"
 
 TOOLCHAIN_TARGET_TASK_append = " \
     extra-cmake-modules \
+    fontconfig \
+    libxft \
+"
+
+TOOLCHAIN_HOST_TASK_append = "\
+    nativesdk-fontconfig \
+    nativesdk-libxft \
 "
 
 GCC_VERSION = "gcc93"
