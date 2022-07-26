@@ -11,12 +11,5 @@ EXTRA_OECMAKE = "\
     -DWITH_EXAMPLES=OFF \
 "
 
-# Build as single package
-PACKAGES = "${PN}-dbg ${PN}"
-INSANE_SKIP_${PN} += "dev-so"
-
-FILES_${PN} += "${includedir}"
-FILES_${PN} += "${libdir}"
-
 BBCLASSEXTEND = "native nativesdk"
 
