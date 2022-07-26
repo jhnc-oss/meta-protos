@@ -3,7 +3,7 @@ DESCRIPTION = "CppUTest is a C /C++ based unit xUnit test framework for unit tes
 AUTHOR = "CppUTest"
 HOMEPAGE = "https://github.com/cpputest/cpputest"
 BUGTRACKER = "https://github.com/cpputest/cpputest/issues"
-SECTION = "development"
+SECTION = "devel"
 LICENSE = "BSD-3-Clause"
 
 CVE_PRODUCT = ""

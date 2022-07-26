@@ -18,5 +18,6 @@ INSANE_SKIP_${PN} += "staticdev"
 
 FILES_${PN} += "${includedir}"
 FILES_${PN} += "${libdir}"
+FILES_${PN}-dev += "${libdir}/CppUTest/cmake/*"
 
 BBCLASSEXTEND = "native nativesdk"
