@@ -19,7 +19,7 @@ def get_so_target(d):
         return 'attach_linux_x86'
     return 'attach_linux_amd64'
 
-do_compile_append() {
+do_compile:append() {
     find ${WORKDIR} -name attach_linux\*.so -exec rm -rf {} \;
 
     cd ${WORKDIR}/${PN}-${PV}/src/${PN}/_vendored/pydevd/pydevd_attach_to_process/linux_and_mac
@@ -28,7 +28,7 @@ do_compile_append() {
     mv ${@get_so_target(d)}.so ../${@get_so_target(d)}.so
 }
 
-do_install_append() {
+do_install:append() {
     chmod -R 0755 ${D}${libdir}
 }
 
