@@ -14,4 +14,6 @@ EXTRA_OECMAKE = "\
 
 FILES_${PN}-dev += "${libdir}/CppUTest/cmake/*"
 
+ALLOW_EMPTY_${PN} = "1"
+
 BBCLASSEXTEND = "native nativesdk"
