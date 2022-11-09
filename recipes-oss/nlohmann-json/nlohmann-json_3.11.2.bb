@@ -1,5 +1,3 @@
-# Upstream version: 502262820a4746ffd930dee350dcba176410edbb
-
 SUMMARY = "JSON for modern C++"
 HOMEPAGE = "https://nlohmann.github.io/json/"
 SECTION = "libs"
