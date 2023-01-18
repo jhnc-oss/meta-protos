@@ -21,5 +21,5 @@ DEV_PKG_DEPENDENCY = ""
 
 FILES:${PN}-dev += "${libdir}/CppUTest/cmake/*"
 
-PACKAGECONFIG ??= ""
+PACKAGECONFIG ?= "extensions"
 PACKAGECONFIG[extensions] = "-DEXTENSIONS=ON,-DEXTENSIONS=OFF"
