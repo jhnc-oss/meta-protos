@@ -10,6 +10,7 @@ RDEPENDS_${PN} = "\
     debugpy \
     minizip \
     nlohmann-json \
+    python3-uinput \
     sshpass \
     xclip \
 "
