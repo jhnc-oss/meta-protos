@@ -14,6 +14,11 @@ TOOLCHAIN_HOST_TASK_append = "\
     nativesdk-libxft \
 "
 
+IMAGE_INSTALL_append = "\
+    weston \
+    wayland \
+"
+
 GCC_VERSION = "gcc93"
 
 TOOLCHAIN_OUTPUTNAME ?= "${DISTRO}-${SDKMACHINE}-toolchain-${GCC_VERSION}-${MACHINE}-${DISTRO_VERSION}"
