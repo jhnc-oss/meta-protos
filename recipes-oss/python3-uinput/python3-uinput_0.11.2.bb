@@ -1,6 +1,6 @@
 SUMMARY = "Python interface to Linux uinput kernel module."
 HOMEPAGE = "https://pypi.org/project/python-uinput/"
-LICENSE = "GPL-3.0-only"
+LICENSE = "GPL-3.0"
 LIC_FILES_CHKSUM = "file://COPYING;md5=f27defe1e96c2e1ecd4e0c9be8967949"
 
 SRC_URI += "file://0001-setup-use-setuptools-instead-of-distutils.patch \
