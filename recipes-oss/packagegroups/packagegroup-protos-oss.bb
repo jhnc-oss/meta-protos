@@ -9,8 +9,10 @@ RDEPENDS_${PN} = "\
     cpputest \
     debugpy \
     libdmtx \
+    libspnav \
     minizip \
     nlohmann-json \
+    nlopt \
     sshpass \
     xclip \
 "
