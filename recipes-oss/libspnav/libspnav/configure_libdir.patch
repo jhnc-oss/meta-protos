@@ -1,0 +1,28 @@
+Adds an option to change the 'lib' directory (eg. to use lib64).
+
+Upstream-Status: Inappropriate [embedded specific]
+
+Signed-off-by: jhnc-oss
+---
+
+--- a/configure
++++ b/configure
+@@ -49,6 +49,10 @@ for arg; do
+ 	--disable-x11)
+ 		X11=no;;
+ 
++	--libdir=*)
++		libdir=`echo $arg | sed 's/--libdir=//'`
++		;;
++
+ 	--help)
+ 		echo 'usage: ./configure [options]'
+ 		echo 'options:'
+@@ -59,6 +63,7 @@ for arg; do
+ 		echo '  --disable-opt: disable speed optimizations'
+ 		echo '  --enable-debug: include debugging symbols (default)'
+ 		echo '  --disable-debug: do not include debugging symbols'
++		echo '  --libdir=<path>: lib dir (default: lib)'
+ 		echo 'all invalid options are silently ignored'
+ 		exit 0
+ 		;;
