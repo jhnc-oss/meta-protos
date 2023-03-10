@@ -11,7 +11,6 @@ RDEPENDS_${PN} = "\
     libdmtx \
     minizip \
     nlohmann-json \
-    python3-uinput \
     sshpass \
     xclip \
 "
