@@ -10,4 +10,6 @@ DEPENDS += "python3-pip-native"
 
 inherit pypi setuptools3
 
+RDEPENDS_${PN} += "python3-iniparse"
+
 BBCLASSEXTEND = "native nativesdk"
