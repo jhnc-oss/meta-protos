@@ -8,6 +8,7 @@ RDEPENDS_${PN} = "\
     cppcheck \
     cpputest \
     debugpy \
+    gammaray \
     libdmtx \
     libspnav \
     minizip \
