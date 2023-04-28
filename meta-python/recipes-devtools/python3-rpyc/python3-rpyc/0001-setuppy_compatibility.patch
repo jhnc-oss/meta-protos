@@ -1,0 +1,142 @@
+Replace pyproject.toml with setup.py
+
+Yocto (< Kirkstone) doesn't support pyproject.toml and the file
+isn't compatible to work with a setup.py stub.
+
+This patch can be removed on later Yocto releases (>= Kirkstone)
+
+Upstream-Status: Inappropriate [embedded specific]
+
+Signed-off-by: jhnc-oss
+---
+
+diff --git a/pyproject.toml b/pyproject.toml
+deleted file mode 100644
+--- a/pyproject.toml
++++ /dev/null
+@@ -1,64 +0,0 @@
+-[build-system]
+-requires = [
+-    "hatchling>=1.6.0",
+-]
+-build-backend = "hatchling.build"
+-
+-[project]
+-name = "rpyc"
+-description = "Remote Python Call (RPyC) is a transparent and symmetric distributed computing library"
+-readme = "README.rst"
+-license = "MIT"
+-requires-python = ">=3.7"
+-authors = [
+-    { name = "Tomer Filiba", email = "tomerfiliba@gmail.com" },
+-    { name = "James Stronz", email = "comrumino@archstrike.org" },
+-]
+-classifiers = [
+-    "Development Status :: 5 - Production/Stable",
+-    "Intended Audience :: Developers",
+-    "Intended Audience :: System Administrators",
+-    "License :: OSI Approved :: MIT License",
+-    "Operating System :: OS Independent",
+-    "Programming Language :: Python :: 3",
+-    "Programming Language :: Python :: 3.7",
+-    "Programming Language :: Python :: 3.8",
+-    "Programming Language :: Python :: 3.9",
+-    "Programming Language :: Python :: 3.10",
+-    "Programming Language :: Python :: 3.11",
+-    "Topic :: Internet",
+-    "Topic :: Software Development :: Libraries :: Python Modules",
+-    "Topic :: Software Development :: Object Brokering",
+-    "Topic :: Software Development :: Testing",
+-    "Topic :: System :: Clustering",
+-    "Topic :: System :: Distributed Computing",
+-    "Topic :: System :: Monitoring",
+-    "Topic :: System :: Networking",
+-    "Topic :: System :: Systems Administration",
+-]
+-dependencies = [
+-    "plumbum",
+-]
+-dynamic = [
+-    "version",
+-]
+-
+-[project.urls]
+-Homepage = "https://rpyc.readthedocs.org"
+-Source = "https://github.com/tomerfiliba-org/rpyc"
+-
+-[project.scripts]
+-rpyc_classic = "rpyc.cli.rpyc_classic:main"
+-rpyc_registry = "rpyc.cli.rpyc_registry:main"
+-"rpyc_classic.py" = "rpyc.cli.rpyc_classic:main"
+-"rpyc_registry.py" = "rpyc.cli.rpyc_registry:main"
+-
+-[tool.hatch.version]
+-path = "rpyc/version.py"
+-
+-[tool.hatch.build.targets.sdist]
+-only-include = ["rpyc"]
+-
+-
+-[tool.hatch.build.targets.wheel]
+-only-include = ["rpyc"]
+diff --git a/setup.py b/setup.py
+new file mode 100644
+--- /dev/null
++++ b/setup.py
+@@ -0,0 +1,56 @@
++#!/usr/bin/env python
++# encoding: utf-8
++
++from setuptools import setup
++from rpyc.version import __version__
++
++setup(
++    name="rpyc",
++    version=__version__,
++    description="Remote Python Call (RPyC), a transparent and symmetric RPC library",
++    author="Tomer Filiba",
++    author_email="tomerfiliba@gmail.com",
++    maintainer="James Stronz",
++    maintainer_email="james@network-perception.com",
++    license="MIT",
++    url="http://rpyc.readthedocs.org",
++    project_urls={
++        "Source": "https://github.com/tomerfiliba-org/rpyc",
++    },
++    packages=[
++        'rpyc',
++        'rpyc.cli',
++        'rpyc.core',
++        'rpyc.lib',
++        'rpyc.utils',
++    ],
++    tests_require=[],
++    test_suite='nose.collector',
++    install_requires=["plumbum"],
++    platforms=["POSIX", "Windows"],
++    python_requires='>=3.7',
++    zip_safe=False,
++    long_description="RPyC, or Remote Python Call, is a transparent library for symmetrical remote procedure calls, clustering, and distributed-computing.",
++    classifiers=[
++        "Development Status :: 5 - Production/Stable",
++        "Intended Audience :: Developers",
++        "Intended Audience :: System Administrators",
++        "License :: OSI Approved :: MIT License",
++        "Operating System :: OS Independent",
++        "Programming Language :: Python :: 3",
++        "Programming Language :: Python :: 3.7",
++        "Programming Language :: Python :: 3.8",
++        "Programming Language :: Python :: 3.9",
++        "Programming Language :: Python :: 3.10",
++        "Programming Language :: Python :: 3.11",
++        "Topic :: Internet",
++        "Topic :: Software Development :: Libraries :: Python Modules",
++        "Topic :: Software Development :: Object Brokering",
++        "Topic :: Software Development :: Testing",
++        "Topic :: System :: Clustering",
++        "Topic :: System :: Distributed Computing",
++        "Topic :: System :: Monitoring",
++        "Topic :: System :: Networking",
++        "Topic :: System :: Systems Administration",
++    ],
++)
