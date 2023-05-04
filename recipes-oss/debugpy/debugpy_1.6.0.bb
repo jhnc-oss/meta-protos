@@ -15,7 +15,7 @@ PYPI_PACKAGE = "debugpy"
 PYPI_PACKAGE_EXT = "zip"
 
 def get_so_target(d):
-    if d.getVar('YOCTO_TARGET_ARCH') == 'x86':
+    if d.getVar('MACHINE_ARCH') == 'genericx86':
         return 'attach_linux_x86'
     return 'attach_linux_amd64'
 
