@@ -17,7 +17,7 @@ EXTRA_OECONF += "\
     --disable-zos-remote \
 "
 
-do_install_append() {
+do_install:append() {
     install -d ${D}${docdir}/${PN}
     install -m 0644 ${S}/COPYING ${D}/${docdir}/${PN}/LICENSE
 }

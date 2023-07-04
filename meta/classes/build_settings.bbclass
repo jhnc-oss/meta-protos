@@ -7,7 +7,7 @@
 # IHNHERIT += "build_settings" to local.conf
 #
 # In addition, the consuming podman container needs to set
-# --env YOCTO_TARGET_ARCH=... and whitelist BB_ENV_EXTRAWHITE
+# --env YOCTO_TARGET_ARCH=... and whitelist BB_ENV_PASSTHROUGH_ADDITIONS
 # accordingly
 
 def build_settings(d):

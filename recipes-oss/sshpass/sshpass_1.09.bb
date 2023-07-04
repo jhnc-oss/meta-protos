@@ -6,7 +6,7 @@ SRC_URI[sha256sum] = "71746e5e057ffe9b00b44ac40453bf47091930cba96bbea8dc48717ded
 
 inherit autotools
 
-do_install_append() {
+do_install:append() {
     install -d ${D}${docdir}/${PN}
     install -m 0644 ${S}/COPYING ${D}/${docdir}/${PN}/LICENSE
 }
@@ -15,10 +15,10 @@ do_install_append() {
 # in main package
 PACKAGES = "${PN} ${PN}-dbg {PN}-src"
 
-FILES_${PN} += "${docdir}"
-FILES_${PN} += "${mandir}"
+FILES:${PN} += "${docdir}"
+FILES:${PN} += "${mandir}"
 
-RDEPENDS_${PN} += "openssh"
+RDEPENDS:${PN} += "openssh"
 
 BBCLASSEXTEND = "native nativesdk"
 
