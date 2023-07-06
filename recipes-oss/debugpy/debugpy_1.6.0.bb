@@ -23,7 +23,7 @@ do_compile:append() {
     find ${WORKDIR} -name attach_linux\*.so -exec rm -rf {} \;
 
     cd ${WORKDIR}/${PN}-${PV}/src/${PN}/_vendored/pydevd/pydevd_attach_to_process/linux_and_mac
-    ${BUILD_CXX} -shared -o ${@get_so_target(d)}.so -fPIC -nostartfiles attach.cpp
+    ${CXX} ${LDFLAGS} -shared -o ${@get_so_target(d)}.so -fPIC -nostartfiles attach.cpp
 
     mv ${@get_so_target(d)}.so ../${@get_so_target(d)}.so
 }
@@ -31,6 +31,8 @@ do_compile:append() {
 do_install:append() {
     chmod -R 0755 ${D}${libdir}
 }
+
+RDEPENDS_${PN} += "glibc"
 
 inherit pypi setuptools3
 
