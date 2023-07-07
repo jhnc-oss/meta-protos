@@ -2,7 +2,7 @@ SUMMARY = "PROTOS open source software package group"
 
 inherit packagegroup
 
-RDEPENDS_${PN} = "\
+RDEPENDS:${PN} = "\
     audit \
     cmocka \
     cppcheck \

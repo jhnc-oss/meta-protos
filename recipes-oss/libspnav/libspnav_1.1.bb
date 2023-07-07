@@ -17,7 +17,7 @@ EXTRA_OECONF += "\
     --libdir=${baselib} \
 "
 
-do_install_append() {
+do_install:append() {
     install -d ${D}${docdir}/${PN}
     install -m 0644 ${S}/LICENSE ${D}${docdir}/${PN}
 }

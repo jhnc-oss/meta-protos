@@ -5,20 +5,20 @@ EXTRA_IMAGE_FEATURES += "staticdev-pkgs"
 EXTRA_IMAGE_FEATURES += "tools-sdk"
 EXTRA_IMAGE_FEATURES += "x11-base"
 
-TOOLCHAIN_TARGET_TASK_append = "\
+TOOLCHAIN_TARGET_TASK:append = "\
     extra-cmake-modules \
     fontconfig \
     libxft \
 "
 
-TOOLCHAIN_HOST_TASK_append = "\
+TOOLCHAIN_HOST_TASK:append = "\
     nativesdk-fontconfig \
     nativesdk-libxft \
     nativesdk-wayland \
     nativesdk-wayland-dev \
 "
 
-IMAGE_INSTALL_append = "\
+IMAGE_INSTALL:append = "\
     weston \
     wayland \
     wayland-protocols \

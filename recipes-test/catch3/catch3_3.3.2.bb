@@ -9,11 +9,11 @@ S = "${WORKDIR}/git"
 
 inherit cmake
 
-do_install_append() {
+do_install:append() {
     rm -rf ${D}${datadir}/Catch2
 }
 
-ALLOW_EMPTY_${PN} = "1"
+ALLOW_EMPTY:${PN} = "1"
 
 BBCLASSEXTEND = "native nativesdk"
 

@@ -2,7 +2,7 @@ SUMMARY = "PROTOS devtools package group"
 
 inherit packagegroup
 
-RDEPENDS_${PN} = "\
+RDEPENDS:${PN} = "\
     extra-cmake-modules \
 "
 

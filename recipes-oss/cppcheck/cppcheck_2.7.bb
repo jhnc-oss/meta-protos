@@ -17,7 +17,7 @@ EXTRA_OECMAKE = "\
     -DBUILD_TESTS=OFF \
 "
 
-FILES_${PN} += "${datadir}/Cppcheck/"
+FILES:${PN} += "${datadir}/Cppcheck/"
 
 BBCLASSEXTEND = "native nativesdk"
 
