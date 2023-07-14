@@ -8,7 +8,7 @@ LIC_FILES_CHKSUM = "file://LICENSE.rst;md5=af88d758f75f3c5c48a967501f24384b"
 
 BRANCH = "8.1.0-jh"
 
-SRC_URI = "git://github.com/jhnc-oss/fmt;branch=${BRANCH}"
+SRC_URI = "git://github.com/jhnc-oss/fmt;protocol=https;branch=${BRANCH}"
 SRCREV = "1dcbdf896a8e1672cd9f189ffe3e2e0290ad0aa0"
 
 S = "${WORKDIR}/git"
