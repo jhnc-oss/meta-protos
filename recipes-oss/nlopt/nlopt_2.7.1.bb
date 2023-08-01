@@ -26,7 +26,7 @@ EXTRA_OECMAKE += "\
     -DCMAKE_SKIP_INSTALL_RPATH=ON \
 "
 
-do_install_append() {
+do_install:append() {
     install -d ${D}${docdir}/${PN}
     install -d ${D}${docdir}/${PN}/algs
     install -d ${D}${docdir}/${PN}/algs/{stogo,slsqp,newuoa,luksan,esch,direct,cobyla,bobyqa,ags}

@@ -16,7 +16,7 @@ PYPI_PACKAGE_EXT = "zip"
 
 def get_so_target(d):
     if d.getVar('MACHINE_ARCH') == 'genericx86':
-        return 'attach_linux_x86'
+        return 'attach_linux:x86'
     return 'attach_linux_amd64'
 
 do_compile:append() {
@@ -32,7 +32,7 @@ do_install:append() {
     chmod -R 0755 ${D}${libdir}
 }
 
-RDEPENDS_${PN} += "glibc"
+RDEPENDS:${PN} += "glibc"
 
 inherit pypi setuptools3
 

@@ -6,7 +6,7 @@ DEPENDS += "\
     qtdeclarative \
 "
 
-RDEPENDS_${PN} = "qtconnectivity qtlocation qtscript qtsvg qttools"
+RDEPENDS:${PN} = "qtconnectivity qtlocation qtscript qtsvg qttools"
 
 SRC_URI = "git://github.com/KDAB/GammaRay;branch=master;protocol=https"
 
@@ -18,16 +18,16 @@ EXTRA_OECMAKE += "\
     -DGAMMARAY_BUILD_UI=ON \
 "
 
-FILES_${PN} += "\
+FILES:${PN} += "\
     ${datadir}/* \
 "
 
-FILES_${PN}-dev += "\
+FILES:${PN}-dev += "\
     ${libdir}/cmake/* \
     ${prefix}/mkspecs/modules/* \
 "
 
-FILES_${PN}-dbg += "\
+FILES:${PN}-dbg += "\
     ${libdir}/.debug/* \
     ${libdir}/gammaray/*/*/.debug \
     ${libdir}/gammaray/*/*/styles/.debug \

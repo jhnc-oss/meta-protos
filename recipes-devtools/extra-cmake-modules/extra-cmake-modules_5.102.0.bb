@@ -13,7 +13,7 @@ inherit cmake_qt5
 
 PACKAGES = "${PN}"
 
-FILES_${PN} += "${datadir}/ECM"
+FILES:${PN} += "${datadir}/ECM"
 
 BBCLASSEXTEND = "native"
 

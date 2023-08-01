@@ -21,7 +21,7 @@ EXTRA_OECMAKE += "-DJSON_BuildTests=OFF"
 
 RDEPENDS:${PN}-dev = ""
 
-ALLOW_EMPTY_${PN} = "1"
+ALLOW_EMPTY:${PN} = "1"
 
 BBCLASSEXTEND = "native nativesdk"
 

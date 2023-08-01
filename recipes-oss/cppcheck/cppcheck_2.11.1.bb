@@ -18,7 +18,7 @@ EXTRA_OECMAKE = "\
     -DUSE_MATCHCOMPILER=ON \
 "
 
-FILES_${PN} += "${datadir}/Cppcheck/"
+FILES:${PN} += "${datadir}/Cppcheck/"
 
 BBCLASSEXTEND = "native nativesdk"
 
