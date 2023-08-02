@@ -1,0 +1,19 @@
+Remove EVP_R_KEYGEN_FAILURE for OpenSSL v3.x compatibility
+
+This patch can be removed on python3-cryptography >= 3.1.
+
+Upstream-Status: Accepted
+Signed-off-by: jhnc-oss
+---
+diff --git a/src/_cffi_src/openssl/err.py b/src/_cffi_src/openssl/err.py
+index d4033f5a4..f573bdf3a 100644
+--- a/src/_cffi_src/openssl/err.py
++++ b/src/_cffi_src/openssl/err.py
+@@ -66,7 +66,6 @@ static const int EVP_R_DIFFERENT_KEY_TYPES;
+ static const int EVP_R_INITIALIZATION_ERROR;
+ static const int EVP_R_INPUT_NOT_INITIALIZED;
+ static const int EVP_R_INVALID_KEY_LENGTH;
+-static const int EVP_R_KEYGEN_FAILURE;
+ static const int EVP_R_MISSING_PARAMETERS;
+ static const int EVP_R_NO_CIPHER_SET;
+ static const int EVP_R_NO_DIGEST_SET;
