@@ -1,0 +1,28 @@
+From a13da93e43d2a7e06b345787807a0c689dc3ad85 Mon Sep 17 00:00:00 2001
+From: Paul Kehrer <paul.l.kehrer@gmail.com>
+Date: Thu, 30 Jul 2020 09:44:31 -0500
+Subject: [PATCH] remove some more constants we don't need (#5361)
+
+these are gone in 3.0 anyway and were removed in that draft PR
+
+
+This patch can be removed on python3-cryptography >= 3.1.
+
+Upstream-Status: Accepted
+Signed-off-by: jhnc-oss
+
+---
+diff --git a/src/_cffi_src/openssl/crypto.py b/src/_cffi_src/openssl/crypto.py
+--- a/src/_cffi_src/openssl/crypto.py
++++ b/src/_cffi_src/openssl/crypto.py
+@@ -23,10 +23,6 @@ static const int OPENSSL_CFLAGS;
+ static const int OPENSSL_BUILT_ON;
+ static const int OPENSSL_PLATFORM;
+ static const int OPENSSL_DIR;
+-static const int CRYPTO_MEM_CHECK_ON;
+-static const int CRYPTO_MEM_CHECK_OFF;
+-static const int CRYPTO_MEM_CHECK_ENABLE;
+-static const int CRYPTO_MEM_CHECK_DISABLE;
+ """
+
+ FUNCTIONS = """
