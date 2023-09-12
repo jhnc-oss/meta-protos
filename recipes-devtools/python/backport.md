@@ -55,9 +55,3 @@ Available with *openembedded-core kirkstone (Yocto Project 4.0)*.
 
 Upstream revision: `0ad97879bb13d542d5b475376805af87cdeb6837`
 
-
-## python3-sortedcontainers
-
-Available with *openembedded-core kirkstone (Yocto Project 4.0)*.
-
-Upstream revision: `c8c4e324eccc816432381d61b94c6ec13e25d634`
