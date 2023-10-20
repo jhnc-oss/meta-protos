@@ -3,6 +3,7 @@ SUMMARY = "PROTOS python devtools software package group"
 inherit packagegroup
 
 RDEPENDS:${PN} = "\
+    python3-js2py \
     python3-paramiko \
     python3-plumbum \
     python3-pynacl \
