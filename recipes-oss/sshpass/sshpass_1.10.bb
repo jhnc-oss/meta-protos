@@ -12,7 +12,7 @@ do_install:append() {
 
 # avoid empty -dev (no headers in source) and ship manpages and license file
 # in main package
-PACKAGES = "${PN} ${PN}-dbg {PN}-src"
+PACKAGES = "${PN} ${PN}-dbg ${PN}-src"
 
 FILES:${PN} += "${docdir}"
 FILES:${PN} += "${mandir}"
