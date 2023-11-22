@@ -13,6 +13,5 @@ RDEPENDS:${PN} = "\
     minizip \
     nlohmann-json \
     nlopt \
-    sshpass \
     xclip \
 "
