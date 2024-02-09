@@ -5,13 +5,13 @@ DESCRIPTION = "The pytest framework makes it easy to write small tests, yet scal
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=bd27e41b6550fe0fc45356d1d81ee37c"
 
-SRC_URI[sha256sum] = "b4bf8c45bd59934ed84001ad51e11b4ee40d40a1229d2c79f9c592b0a3f6bd8a"
+DEPENDS += "python3-setuptools-scm-native"
+
+SRC_URI[sha256sum] = "2cf0005922c6ace4a3e2ec8b4080eb0d9753fdc93107415332f50ce9e7994280"
 
 inherit update-alternatives pypi setuptools3
 
-DEPENDS += "python3-setuptools-scm-native"
-
-RDEPENDS:${PN} += " \
+RDEPENDS:${PN} += "\
     ${PYTHON_PN}-atomicwrites \
     ${PYTHON_PN}-attrs \
     ${PYTHON_PN}-debugger \
