@@ -16,6 +16,7 @@ RDEPENDS:${PN} += " \
     ${PYTHON_PN}-attrs \
     ${PYTHON_PN}-debugger \
     ${PYTHON_PN}-doctest \
+    ${PYTHON_PN}-exceptiongroup \
     ${PYTHON_PN}-importlib-metadata \
     ${PYTHON_PN}-iniconfig \
     ${PYTHON_PN}-json \
