@@ -4,6 +4,6 @@ AUTHOR = "Steven G. Johnson <stevenj@alum.mit.edu>"
 HOMEPAGE = "https://github.com/stevengj/nlopt"
 BUGTRACKER = "https://github.com/stevengj/nlopt/issues"
 SECTION = "development"
-LICENSE = "LGPLv2+"
+LICENSE = "LGPL-2.0-or-later"
 
 CVE_PRODUCT = ""

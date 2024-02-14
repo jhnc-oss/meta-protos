@@ -4,6 +4,6 @@ AUTHOR = "Andrea Francia"
 HOMEPAGE = "https://github.com/andreafrancia/trash-cli"
 BUGTRACKER = "https://github.com/andreafrancia/trash-cli/issues"
 SECTION = "tools"
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 
 CVE_PRODUCT = ""
