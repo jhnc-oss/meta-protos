@@ -4,7 +4,7 @@ AUTHOR = "paramiko"
 HOMEPAGE = "https://www.paramiko.org/"
 BUGTRACKER = "https://github.com/paramiko/paramiko/issues"
 SECTION = "development"
-LICENSE = "LGPL-2.1"
+LICENSE = "LGPL-2.1-only"
 
 CVE_PRODUCT = ""
 

@@ -4,6 +4,6 @@ AUTHOR = "Peter Åstrand <astrand@lysator.liu.se>"
 HOMEPAGE = "https://github.com/astrand/xclip"
 BUGTRACKER = "https://github.com/astrand/xclip/issues"
 SECTION = "tools"
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 
 CVE_PRODUCT = ""
