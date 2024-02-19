@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 DEPENDS += "libpcre"
 
 SRC_URI = "git://github.com/danmar/cppcheck.git;protocol=https;nobranch=1"
-SRCREV = "f2f1fb0bca5f23aac8f02fb9c09e4529a7935749"
+SRCREV = "da29903ffcbde465b6c2b47e8dc38277743f47ec"
 
 S = "${WORKDIR}/git"
 
