@@ -1,5 +1,7 @@
 SUMMARY = "PROTOS open source software package group"
 
+PACKAGE_ARCH = "${TUNE_PKGARCH}"
+
 inherit packagegroup
 
 RDEPENDS:${PN} = "\
