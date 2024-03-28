@@ -11,12 +11,16 @@
 # accordingly
 
 def build_settings(d):
-  if (d.getVar("YOCTO_TARGET_ARCH") == "x86_64"):
+  arch = d.getVar("YOCTO_TARGET_ARCH")
+
+  if arch == "x86_64":
     opt_machine = "genericx86-64"
     opt_defaulttune = "core2-64"
-  else:
+  elif arch == "x86":
     opt_machine = "genericx86"
     opt_defaulttune = "i586"
+  else:
+    bb.error("Unsupported target arch: %s" % arch)
 
   d.appendVar("IMAGE_FSTYPES", " tar.gz")
   d.setVar("IMAGE_VERSION_SUFFIX", "-" + d.getVar('DISTRO_VERSION'))
