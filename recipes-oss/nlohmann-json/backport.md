@@ -1,5 +1,5 @@
 # Backport
 
-Available with *meta-oe > kirkstone (Yocto Project > 4.0)*.
+Available with *meta-oe scarthgap (Yocto Project 5.0)*.
 
-Upstream revision: `ca831e8d5b3d3e3d1612ae74c35dd73bef63e2b6`
+Upstream revision: `1ac098f00d1f6d9c7850429d37abcbb03b17cc41`
