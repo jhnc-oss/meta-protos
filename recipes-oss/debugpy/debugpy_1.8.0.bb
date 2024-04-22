@@ -17,9 +17,9 @@ PYPI_PACKAGE_EXT = "zip"
 def get_so_suffix(d):
     arch = d.getVar('MACHINE_ARCH')
 
-    if arch == 'genericx86':
+    if arch == 'genericx86' or arch == 'mc_x86_32':
         return 'x86'
-    if arch == 'genericx86_64':
+    if arch == 'genericx86_64' or arch == 'mc_x86_64' or arch == 'wsl_x86_64':
         return 'amd64'
     bb.error("Unsupported architecture")
 
