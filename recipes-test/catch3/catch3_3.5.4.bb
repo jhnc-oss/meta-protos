@@ -3,7 +3,7 @@ require ${PN}.inc
 LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=e4224ccaecb14d942c71d31bef20d78c"
 
 SRC_URI = "git://github.com/catchorg/Catch2.git;protocol=https;nobranch=1"
-SRCREV = "8ac8190e494a381072c89f5e161b92a08d98b37b"
+SRCREV = "b5373dadca40b7edc8570cf9470b9b1cb1934d40"
 
 S = "${WORKDIR}/git"
 
