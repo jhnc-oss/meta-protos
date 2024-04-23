@@ -39,4 +39,4 @@ RDEPENDS:${PN} += "glibc"
 
 BBCLASSEXTEND = "native nativesdk"
 
-COMPATIBLE_MACHINES="^(genericx86|genericx86-64|mc-x86-32|mc-x86-64|wsl-x86-64)$"
+COMPATIBLE_MACHINES="^(genericx86-64|mc-x86-64|wsl-x86-64)$"
