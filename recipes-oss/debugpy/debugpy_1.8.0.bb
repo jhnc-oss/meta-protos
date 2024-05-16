@@ -21,7 +21,7 @@ def get_so_suffix(d):
         return 'x86'
     if arch == 'genericx86_64' or arch == 'mc_x86_64' or arch == 'wsl_x86_64':
         return 'amd64'
-    if arch == 'hw_aarch64':
+    if arch == 'hw_aarch64' or arch == 'imx8mp_lpddr4_evk':
         return 'aarch64'
     bb.error("Unsupported architecture")
 
