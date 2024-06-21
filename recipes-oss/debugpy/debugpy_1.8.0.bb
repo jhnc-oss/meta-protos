@@ -17,10 +17,12 @@ PYPI_PACKAGE_EXT = "zip"
 def get_so_suffix(d):
     arch = d.getVar('MACHINE_ARCH')
 
-    if arch == 'genericx86' or arch == 'mc_x86_32':
+    if arch == 'genericx86':
         return 'x86'
     if arch == 'genericx86_64' or arch == 'mc_x86_64' or arch == 'wsl_x86_64':
         return 'amd64'
+    if arch == 'hw_aarch64' or arch == 'imx8mp_lpddr4_evk':
+        return 'aarch64'
     bb.error("Unsupported architecture")
 
 do_compile:append() {
@@ -38,3 +40,5 @@ inherit pypi setuptools3
 RDEPENDS:${PN} += "glibc"
 
 BBCLASSEXTEND = "native nativesdk"
+
+COMPATIBLE_MACHINES="^(genericx86-64|mc-x86-64|wsl-x86-64|hw-aarch64)$"
