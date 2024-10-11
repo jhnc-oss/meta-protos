@@ -1,0 +1,29 @@
+
+██████╗ ██████╗  ██████╗ ████████╗ ██████╗ ███████╗
+██╔══██╗██╔══██╗██╔═══██╗╚══██╔══╝██╔═══██╗██╔════╝
+██████╔╝██████╔╝██║   ██║   ██║   ██║   ██║███████╗
+██╔═══╝ ██╔══██╗██║   ██║   ██║   ██║   ██║╚════██║
+██║     ██║  ██║╚██████╔╝   ██║   ╚██████╔╝███████║
+╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚══════╝
+
+Welcome to the PROTOS Yocto buildsystem
+
+
+You can now run 'bitbake <target>'
+
+Example targets are:
+    audit
+    cmocka
+
+Example package group targets are:
+    packagegroup-protos-oss
+
+In order to debug targets use:
+    <target> -c devshell
+
+Other commonly useful commands are:
+ - 'devtool' and 'recipetool' handle common recipe tasks
+ - 'bitbake-layers' handles common layer tasks
+ - 'oe-pkgdata-util' handles common target package tasks
+
+
