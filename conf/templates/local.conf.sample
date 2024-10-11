@@ -1,0 +1,26 @@
+MACHINE ?= "genericx86"
+DISTRO ?= "protos"
+SDKMACHINE = "x86_64"
+
+DEFAULTTUNE ?= "i586"
+
+baselib = "${@d.getVar('BASE_LIB_tune-' + (d.getVar('DEFAULTTUNE') \
+    or 'INVALID')) or d.getVar('BASELIB')}"
+
+PATCHRESOLVE = "noop"
+
+EXTRA_IMAGE_FEATURES ?= "debug-tweaks"
+USER_CLASSES ?= "buildstats"
+
+PACKAGE_CLASSES ?= "package_rpm"
+
+DL_DIR ?= "${TOPDIR}/../download"
+SSTATE_DIR ?= "${TOPDIR}/../sstate"
+
+BB_GENERATE_MIRROR_TARBALLS = "1"
+
+INHERIT += "build_settings"
+
+PACKAGECONFIG:append_pn-qemu-system-native = " sdl"
+
+CONF_VERSION = "2"
