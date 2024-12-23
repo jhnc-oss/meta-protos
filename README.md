@@ -5,6 +5,10 @@
 
 Meta Layer of the [**Protos** Yocto distribution](https://github.com/jhnc-oss/protos).
 
+## :warning: Deprecation notice
+
+This layer supports only `kirkstone` and `dunfell` and has been merged into [**Protos**](https://github.com/jhnc-oss/protos) with `scarthgap`.
+
 ## Available Versions
 
 | Yocto Release Branch | Status | Note |
